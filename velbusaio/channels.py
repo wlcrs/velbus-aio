@@ -704,6 +704,9 @@ class EdgeLit(Channel):
     An EdgeLit channel
     """
 
+    def get_categories(self) -> list[str]:
+        return ["edgelit"]
+
     async def reset_color(self, left=True, top=True, right=True, bottom=True):
         msg = SetEdgeColorMessage(self._address)
         msg.apply_background_color = True
