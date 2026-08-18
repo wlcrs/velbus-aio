@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from velbusaio.command_registry import register
-from velbusaio.message_fields import DeclarativeMessage
+from velbusaio.message_fields import DeclarativeMessage, Int16Field
 
 COMMAND_CODE = 0xDB
 
@@ -18,11 +18,4 @@ class SwitchToComfortMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _priority = None
 
-    def __init__(self, address=None, sleep=0):
-        """Initialize SwitchToComfortMessage instance."""
-        super().__init__(address)
-        self.sleep = sleep
-
-    def data_to_binary(self):
-        """:return: bytes"""
-        return bytes([COMMAND_CODE, self.sleep >> 8, self.sleep & 0xFF])
+    sleep = Int16Field(0, default=0)

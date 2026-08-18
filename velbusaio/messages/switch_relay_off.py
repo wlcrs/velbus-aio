@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from velbusaio.command_registry import register
-from velbusaio.message_fields import ChannelsField, DeclarativeMessage
+from velbusaio.message_fields import (
+    ChannelIndexField,
+    ChannelsField,
+    DeclarativeMessage,
+)
 
 COMMAND_CODE = 0x01
 
@@ -23,8 +27,4 @@ class SwitchRelayOffMessage(DeclarativeMessage):
 class SwitchRelayOffMessage20(SwitchRelayOffMessage):
     """Switch Relay Off Message for -20 series."""
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        if self.relay_channels:
-            return bytes([COMMAND_CODE, self.relay_channels[0]])
-        return bytes([COMMAND_CODE, 0])
+    relay_channels = ChannelIndexField(0)

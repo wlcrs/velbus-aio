@@ -31,17 +31,8 @@ class BlindStatusNgMessage(DeclarativeMessage):
 
     channel = ChannelField(0)
     timeout = ByteField(1)
-    status = ByteField(2)
+    status = ByteField(2, json_map=DSTATUS)
     position = ByteField(4, default=None)
-
-    def to_json(self):
-        """To json."""
-        json_dict = self.to_json_basic()
-        json_dict["channel"] = self.channel
-        json_dict["timeout"] = self.timeout
-        json_dict["position"] = self.position
-        json_dict["status"] = DSTATUS[self.status]
-        return json.dumps(json_dict)
 
     def is_moving_up(self) -> bool:
         """Is moving up."""
@@ -101,15 +92,7 @@ class BlindStatusMessage(DeclarativeMessage):
 
     channel = BlindChannelField(0)
     timeout = ByteField(1)
-    status = BlindStatusField(2)
-
-    def to_json(self):
-        """To json."""
-        json_dict = self.to_json_basic()
-        json_dict["channel"] = self.channel
-        json_dict["timeout"] = self.timeout
-        json_dict["status"] = DSTATUS[self.status]
-        return json.dumps(json_dict)
+    status = BlindStatusField(2, json_map=DSTATUS)
 
     def is_moving_up(self) -> bool:
         """Is moving up."""

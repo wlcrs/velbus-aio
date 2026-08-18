@@ -6,15 +6,17 @@ eliminating boilerplate in populate() and data_to_binary() methods.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import json
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Generic, TypeVar, overload
 
 from velbusaio.command_registry import CommandRegistryError, commandRegistry
 from velbusaio.message import Message
 
+T = TypeVar("T")
 
-class Field:
+
+class Field(Generic[T]):
     """Base field descriptor for message attributes."""
 
     serializable: bool = True
@@ -22,12 +24,13 @@ class Field:
     def __init__(
         self,
         byte_index: int | None = None,
-        default: Any = None,
-        parser: Callable[[bytes], Any] | None = None,
-        serializer: Callable[[Any], bytes] | None = None,
+        default: T | None = None,
+        parser: Callable[[bytes], T] | None = None,
+        serializer: Callable[[T], bytes] | None = None,
         *,
         serializable: bool | None = None,
-        json_map: dict[Any, Any] | None = None,
+        json_map: Mapping[Any, Any] | Callable[[Any], Any] | None = None,
+        json_name: str | None = None,
     ) -> None:
         """Initialize field descriptor."""
         self.byte_index = byte_index
@@ -35,6 +38,7 @@ class Field:
         self.parser = parser
         self.serializer = serializer
         self.json_map = json_map
+        self.json_name = json_name
         if serializable is not None:
             self.serializable = serializable
         self.name: str | None = None
@@ -42,6 +46,12 @@ class Field:
     def __set_name__(self, owner: type, name: str) -> None:
         """Store the field name."""
         self.name = name
+
+    @overload
+    def __get__(self, obj: None, objtype: type | None = None) -> Field[T]: ...
+
+    @overload
+    def __get__(self, obj: Any, objtype: type | None = None) -> T: ...
 
     def __get__(self, obj: Any, objtype: type | None = None) -> Any:
         """Get the field value."""
@@ -51,7 +61,7 @@ class Field:
             raise AttributeError("Field name is not set")
         return obj.__dict__.get(self.name, self.default)
 
-    def __set__(self, obj: Any, value: Any) -> None:
+    def __set__(self, obj: Any, value: T) -> None:
         """Set the field value."""
         if self.name is None:
             raise AttributeError("Field name is not set")
@@ -75,12 +85,16 @@ class Field:
 
     def to_json_value(self, value: Any) -> Any:
         """Convert a parsed value for JSON output."""
+        if callable(self.json_map):
+            return self.json_map(value)
         if self.json_map is not None:
+            if isinstance(value, (list, tuple)):
+                return [self.json_map.get(v, v) for v in value]
             return self.json_map.get(value, value)
         return value
 
 
-class ByteField(Field):
+class ByteField(Field[int]):
     """Single byte field."""
 
     def __init__(self, byte_index: int, default: int | None = 0, **kwargs: Any) -> None:
@@ -90,6 +104,8 @@ class ByteField(Field):
     def parse(self, data: bytes) -> int:
         """Parse byte from data."""
         assert self.byte_index is not None
+        if self.byte_index >= len(data):
+            return self.default or 0
         return data[self.byte_index]
 
     def serialize(self, value: int) -> bytes:
@@ -97,7 +113,7 @@ class ByteField(Field):
         return bytes([value])
 
 
-class BitField(Field):
+class BitField(Field[Any]):
     """Bit or bit-mask field within a single byte."""
 
     def __init__(
@@ -141,7 +157,7 @@ class BitField(Field):
         return bytes([bit_value])
 
 
-class MappedField(Field):
+class MappedField(Field[Any]):
     """Field whose JSON representation uses a lookup map."""
 
     def __init__(
@@ -165,7 +181,7 @@ class MappedField(Field):
         )
 
 
-class ComputedField(Field):
+class ComputedField(Field[Any]):
     """Derived field populated from data but not tied to a fixed byte index."""
 
     def __init__(
@@ -188,7 +204,7 @@ class ComputedField(Field):
         )
 
 
-class RawTailField(Field):
+class RawTailField(Field[bytes]):
     """Remaining bytes from a start index."""
 
     def __init__(self, start_index: int, default: bytes = b"") -> None:
@@ -207,7 +223,7 @@ class RawTailField(Field):
         return data[self.start_index :]
 
 
-class ChannelsField(Field):
+class ChannelsField(Field[list[int]]):
     """Field for channel bitmask parsing."""
 
     def __init__(
@@ -222,8 +238,15 @@ class ChannelsField(Field):
         byte_value = data[self.byte_index]
         return [offset + 1 for offset in range(8) if byte_value & (1 << offset)]
 
-    def serialize(self, channels: list[int]) -> bytes:
+    def serialize(self, channels: Any) -> bytes:
         """Serialize channels to bitmask byte."""
+        if isinstance(channels, str):
+            try:
+                return bytes([int(channels, 16)])
+            except ValueError:
+                return bytes([0xFF])
+        if not isinstance(channels, (list, tuple, set)):
+            return bytes([int(channels)])
         result = 0
         for offset in range(8):
             if offset + 1 in channels:
@@ -231,7 +254,7 @@ class ChannelsField(Field):
         return bytes([result])
 
 
-class ChannelField(Field):
+class ChannelField(Field[int]):
     """Field for single channel parsing from a bitmask byte."""
 
     def __init__(self, byte_index: int, default: int = 0, **kwargs: Any) -> None:
@@ -254,7 +277,7 @@ class ChannelField(Field):
         return bytes([1 << (channel - 1)])
 
 
-class ChannelIndexField(Field):
+class ChannelIndexField(Field[list[int]]):
     """Channel index byte (1-8), stored as list[int] for API consistency."""
 
     def __init__(
@@ -274,7 +297,7 @@ class ChannelIndexField(Field):
         return bytes([channels[0] if channels else 0])
 
 
-class Int16Field(Field):
+class Int16Field(Field[int]):
     """16-bit integer field (big-endian)."""
 
     def __init__(
@@ -292,6 +315,8 @@ class Int16Field(Field):
     def parse(self, data: bytes) -> int:
         """Parse 16-bit value from two bytes."""
         assert self.byte_index is not None
+        if self.byte_index + 1 >= len(data):
+            return self.default or 0
         value = (data[self.byte_index] << 8) | data[self.byte_index + 1]
         if self.signed and value & 0x8000:
             value -= 0x10000
@@ -304,7 +329,7 @@ class Int16Field(Field):
         return bytes([value >> 8, value & 0xFF])
 
 
-class Int24Field(Field):
+class Int24Field(Field[int]):
     """24-bit integer field (big-endian, 3 bytes)."""
 
     def __init__(self, byte_index: int, default: int = 0, **kwargs: Any) -> None:
@@ -325,7 +350,7 @@ class Int24Field(Field):
         return bytes([value >> 16, (value >> 8) & 0xFF, value & 0xFF])
 
 
-class Int32Field(Field):
+class Int32Field(Field[int]):
     """32-bit integer field (big-endian, 4 bytes)."""
 
     def __init__(self, byte_index: int, default: int = 0, **kwargs: Any) -> None:
@@ -354,7 +379,7 @@ class Int32Field(Field):
         )
 
 
-class BlindChannelField(Field):
+class BlindChannelField(Field[int]):
     """Channel field for VMB1BL/VMB2BL blind modules."""
 
     def __init__(self, byte_index: int, default: int = 0, **kwargs: Any) -> None:
@@ -372,7 +397,7 @@ class BlindChannelField(Field):
         return bytes([0x03 if channel == 1 else 0x0C])
 
 
-class BlindStatusField(Field):
+class BlindStatusField(Field[int]):
     """Status field for VMB1BL/VMB2BL blind status."""
 
     def __init__(
@@ -400,7 +425,7 @@ class BlindStatusField(Field):
         return bytes([value])
 
 
-class TemperatureField(Field):
+class TemperatureField(Field[float]):
     """Temperature field with special Velbus encoding."""
 
     def __init__(self, byte_index: int, default: float = 0.0, **kwargs: Any) -> None:
@@ -424,7 +449,7 @@ class TemperatureField(Field):
         return bytes([raw >> 8, raw & 0xFF])
 
 
-class HalfDegreeField(Field):
+class HalfDegreeField(Field[float]):
     """One-byte temperature with 0.5°C resolution (two's complement when signed)."""
 
     def __init__(
@@ -454,7 +479,7 @@ class HalfDegreeField(Field):
         return bytes([int(round(value * 2)) & 0xFF])
 
 
-class StringField(Field):
+class StringField(Field[str]):
     """String field for text data."""
 
     def __init__(
@@ -527,12 +552,21 @@ def _make_set_defaults(
 
 
 def _make_init(cls: type, fields: dict[str, Field]) -> Callable[..., None]:
-    """Build __init__ that seeds field defaults."""
+    """Build __init__ that seeds field defaults and accepts positional and keyword arguments."""
 
-    def __init__(self: DeclarativeMessage, address: int | None = None) -> None:
+    def __init__(
+        self: DeclarativeMessage, address: int | None = None, *args: Any, **kwargs: Any
+    ) -> None:
         Message.__init__(self)
+        field_names = list(fields.keys())
+        for index, arg in enumerate(args):
+            if index < len(field_names):
+                setattr(self, field_names[index], arg)
         for field_name, field in fields.items():
-            setattr(self, field_name, field.default)
+            if field_name in kwargs:
+                setattr(self, field_name, kwargs[field_name])
+            elif field_name not in self.__dict__:
+                setattr(self, field_name, field.default)
         self.set_defaults(address)
 
     return __init__
@@ -641,8 +675,9 @@ def _make_to_json_basic(
     def to_json_basic(self: DeclarativeMessage) -> dict[str, Any]:
         payload = Message.to_json_basic(self)
         for field_name, field in fields.items():
+            key = field.json_name if field.json_name is not None else field_name
             value = getattr(self, field_name, field.default)
-            payload[field_name] = field.to_json_value(value)
+            payload[key] = field.to_json_value(value)
         return payload
 
     return to_json_basic
@@ -667,7 +702,7 @@ class DeclarativeMessage(Message):
     _data_length: ClassVar[int | None] = None
     _auto_register: ClassVar[bool] = False
     _generates_data_to_binary: ClassVar[bool] = True
-    _generates_to_json: ClassVar[bool] = False
+    _generates_to_json: ClassVar[bool] = True
 
     _declarative_fields: ClassVar[dict[str, Field]] = {}
 

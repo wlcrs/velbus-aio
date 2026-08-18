@@ -21,9 +21,9 @@ from velbusaio.const import (
     SCAN_MODULEINFO_TIMEOUT_INTERVAL,
     SCAN_MODULETYPE_TIMEOUT,
 )
+from velbusaio.message import Message
 from velbusaio.messages.module_subtype import ModuleSubTypeMessage
 from velbusaio.messages.module_type import ModuleType2Message, ModuleTypeMessage
-from velbusaio.raw_message import RawMessage
 
 if TYPE_CHECKING:
     from velbusaio.controller import Velbus
@@ -205,7 +205,7 @@ class PacketHandler:
             total_time = time.perf_counter() - start_time
             self._log.info(f"Module scan completed in {total_time:.2f} seconds")
 
-    async def __handle_module_type_response_async(self, rawmsg: RawMessage) -> None:
+    async def __handle_module_type_response_async(self, rawmsg: Message) -> None:
         """Handle a received module type response packet."""
         address = rawmsg.address
 
@@ -215,14 +215,17 @@ class PacketHandler:
             )
             return
 
-        tmsg: ModuleTypeMessage = ModuleTypeMessage()
-        tmsg.populate(rawmsg.priority, address, rawmsg.rtr, rawmsg.data_only)
+        if isinstance(rawmsg, ModuleTypeMessage):
+            tmsg = rawmsg
+        else:
+            tmsg = ModuleTypeMessage()
+            tmsg.populate(rawmsg.priority, address, rawmsg.rtr, rawmsg.data_only or b"")
         self._log.debug(
             f"A '{tmsg.module_type_name()}' ({tmsg.module_type:#02x}) lives on address {address} ({address:#02x})"
         )
         self.__scan_found_addresses[address] = tmsg
 
-    async def handle(self, rawmsg: RawMessage) -> None:
+    async def handle(self, rawmsg: Message) -> None:
         """Handle a received packet."""
         if rawmsg.address < 1 or rawmsg.address > 254:
             return

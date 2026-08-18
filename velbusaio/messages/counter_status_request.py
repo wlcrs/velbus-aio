@@ -6,8 +6,7 @@
 from __future__ import annotations
 
 from velbusaio.command_registry import register
-from velbusaio.message import Message
-from velbusaio.message_fields import DeclarativeMessage
+from velbusaio.message_fields import ByteField, ChannelsField, DeclarativeMessage
 
 COMMAND_CODE = 0xBD
 
@@ -21,12 +20,5 @@ class CounterStatusRequestMessage(DeclarativeMessage):
 
     wait_after_send = 500
 
-    def __init__(self, address=None):
-        """Initialize Counter Status Request message."""
-        Message.__init__(self)
-        self.channels = []
-        self.set_defaults(address)
-
-    def data_to_binary(self):
-        """:return: bytes"""
-        return bytes([COMMAND_CODE, self.channels_to_byte(self.channels), 0x00])
+    channels = ChannelsField(0)
+    dummy = ByteField(1, default=0x00)

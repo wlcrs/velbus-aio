@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from velbusaio.command_registry import register
-from velbusaio.message_fields import DeclarativeMessage
+from velbusaio.message_fields import ByteField, DeclarativeMessage
 
 COMMAND_CODE = 0xE0
 
@@ -18,6 +18,4 @@ class TempSetHeatingMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _priority = None
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        return bytes([COMMAND_CODE, 0xAA])
+    mode = ByteField(0, default=0xAA)

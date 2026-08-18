@@ -25,12 +25,6 @@ class ChannelNameRequestMessage(DeclarativeMessage):
 
     channels = ChannelsField(0)
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        if isinstance(self.channels, list):
-            return bytes([COMMAND_CODE, self.channels_to_byte(self.channels)])
-        return bytes([COMMAND_CODE, 0xFF])
-
 
 @register(COMMAND_CODE)
 class ChannelNameRequestMessage2(ChannelNameRequestMessage):

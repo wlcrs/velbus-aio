@@ -12,8 +12,8 @@ import typing as t
 import backoff
 
 from velbusaio.const import MAXIMUM_MESSAGE_SIZE, MINIMUM_MESSAGE_SIZE, SLEEP_TIME
-from velbusaio.message import ParserError
-from velbusaio.raw_message import RawMessage, create as create_message_info
+from velbusaio.message import Message, ParserError
+from velbusaio.raw_message import create as create_message_info
 
 
 class VelbusProtocol(asyncio.BufferedProtocol):
@@ -25,7 +25,7 @@ class VelbusProtocol(asyncio.BufferedProtocol):
 
     def __init__(
         self,
-        message_received_callback: t.Callable[[RawMessage], t.Awaitable[None]],
+        message_received_callback: t.Callable[[Message], t.Awaitable[None]],
         connection_state_callback: t.Callable[[bool], t.Awaitable[None]] | None = None,
     ) -> None:
         """Initialize VelbusProtocol with callbacks."""
@@ -166,7 +166,7 @@ class VelbusProtocol(asyncio.BufferedProtocol):
         """
         self.data_received(bytes(self._buffer_view[:nbytes]))
 
-    async def _process_message(self, msg: RawMessage) -> None:
+    async def _process_message(self, msg: Message) -> None:
         # self._log.debug(f"RX: {msg}")
         # This coroutine is scheduled as a detached task (asyncio.ensure_future),
         # so any exception it raises would otherwise surface as an unretrieved
@@ -186,7 +186,7 @@ class VelbusProtocol(asyncio.BufferedProtocol):
         if self.transport is not None and not self.transport.is_closing():
             self.transport.write(authkey.encode("utf-8"))
 
-    async def send_message(self, msg: RawMessage) -> None:
+    async def send_message(self, msg: Message) -> None:
         """Queue a message to be sent to Velbus."""
         self._send_queue.put_nowait(msg)
 
@@ -197,7 +197,7 @@ class VelbusProtocol(asyncio.BufferedProtocol):
         await self._write_transport_lock.acquire()
         while self._restart_writer:
             # wait for an item from the queue
-            msg_info: RawMessage | None = await self._send_queue.get()
+            msg_info: Message | None = await self._send_queue.get()
             if msg_info is None:
                 self._restart_writer = False
                 if self._write_transport_lock.locked():
@@ -247,7 +247,15 @@ class VelbusProtocol(asyncio.BufferedProtocol):
         lambda is_sent: not is_sent,
         max_tries=10,
     )
-    async def _write_message(self, msg: RawMessage) -> bool:
+    async def _write_message(self, msg: Message) -> bool:
+        """Write a message to Velbus."""
+        self._log.debug(f"TX: {msg}")
+        if self.transport and not self.transport.is_closing():
+            self.transport.write(msg.to_bytes())
+            self._last_activity_time = time.time()
+            return True
+        return False
+
         """Write a message to Velbus."""
         self._log.debug(f"TX: {msg}")
         if self.transport and not self.transport.is_closing():

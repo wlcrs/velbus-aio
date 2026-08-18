@@ -373,14 +373,7 @@ class Velbus:
 
     async def send(self, msg: Message) -> None:
         """Send a packet."""
-        await self._protocol.send_message(
-            RawMessage(
-                priority=msg.priority,
-                address=msg.address,
-                rtr=msg.rtr,
-                data=msg.data_to_binary(),
-            )
-        )
+        await self._protocol.send_message(msg)
 
     def get_all_sensor(
         self,
