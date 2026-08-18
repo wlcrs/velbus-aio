@@ -115,29 +115,77 @@ class ByteField(Field[int]):
 
 
 class BitField(Field[Any]):
-    """Bit or bit-mask field within a single byte."""
+    """Bit or bit-range field within a single byte."""
 
     def __init__(
         self,
         byte_index: int,
-        mask: int,
         *,
-        shift: int = 0,
+        bit: int | None = None,
+        bit_range: tuple[int, int] | None = None,
+        bit_start: int | None = None,
+        bit_count: int = 1,
         default: Any = 0,
-        as_bool: bool = False,
+        as_bool: bool | None = None,
         json_map: dict[Any, Any] | None = None,
-        serializable: bool = False,
+        serializable: bool = True,
     ) -> None:
         """Initialize bit field."""
+        if byte_index < 0:
+            raise ValueError(f"byte_index must be >= 0, got {byte_index}")
+
+        specified = sum(x is not None for x in (bit, bit_range, bit_start))
+        if specified != 1:
+            raise ValueError(
+                "Must specify exactly one of: bit, bit_range, or bit_start"
+            )
+
+        if bit is not None:
+            if not (0 <= bit <= 7):
+                raise ValueError(f"bit must be between 0 and 7, got {bit}")
+            mask = 1 << bit
+            shift = bit
+            if as_bool is None:
+                as_bool = True
+
+        elif bit_range is not None:
+            start, end = bit_range
+            if not (0 <= start <= end <= 7):
+                raise ValueError(
+                    f"bit_range must satisfy 0 <= start <= end <= 7, got {bit_range}"
+                )
+            count = end - start + 1
+            mask = ((1 << count) - 1) << start
+            shift = start
+            if as_bool is None:
+                as_bool = False
+
+        else:  # bit_start is not None
+            assert bit_start is not None
+            if not (0 <= bit_start <= 7):
+                raise ValueError(f"bit_start must be between 0 and 7, got {bit_start}")
+            if not (1 <= bit_count <= 8 - bit_start):
+                raise ValueError(
+                    f"bit_count must be between 1 and {8 - bit_start} for bit_start={bit_start}, got {bit_count}"
+                )
+            mask = ((1 << bit_count) - 1) << bit_start
+            shift = bit_start
+            if as_bool is None:
+                as_bool = False
+
         super().__init__(
             byte_index=byte_index,
             default=default,
             json_map=json_map,
             serializable=serializable,
         )
+
         self.mask = mask
         self.shift = shift
-        self.as_bool = as_bool
+        self.as_bool = bool(as_bool)
+
+
+
 
     def parse(self, data: bytes) -> Any:
         """Parse masked bits from data."""
@@ -381,21 +429,30 @@ class Int32Field(Field[int]):
 
 
 class BlindChannelField(Field[int]):
-    """Channel field for VMB1BL/VMB2BL blind modules."""
+    """Channel field for VMB1BL/VMB2BL blind modules.
+
+    Note on encoding asymmetry:
+    - Incoming status frames: VMB1BL/VMB2BL modules report individual relay status
+      bits (e.g. bit 1 = 0x02 for Channel 1 Output 1). parse() extracts the channel (1 or 2).
+    - Outgoing command frames: Velbus requires sending the combined relay bitmask for
+      all outputs of that channel (0x03 = 0x01|0x02 for Channel 1 outputs 1&2; 0x0C = 0x04|0x08 for Channel 2 outputs 3&4).
+      serialize() produces this combined command bitmask.
+    """
 
     def __init__(self, byte_index: int, default: int = 0, **kwargs: Any) -> None:
         """Initialize blind channel field."""
         super().__init__(byte_index=byte_index, default=default, **kwargs)
 
     def parse(self, data: bytes) -> int:
-        """Parse channel from VMB1BL/VMB2BL encoding."""
+        """Parse channel (1 or 2) from VMB1BL/VMB2BL incoming status byte."""
         assert self.byte_index is not None
         tmp = (data[self.byte_index] >> 1) & 0x03
         return 1 if tmp == 1 else 2
 
     def serialize(self, channel: int) -> bytes:
-        """Serialize channel to VMB1BL/VMB2BL byte."""
+        """Serialize channel to VMB1BL/VMB2BL outgoing command relay bitmask (0x03 for ch1, 0x0C for ch2)."""
         return bytes([0x03 if channel == 1 else 0x0C])
+
 
 
 class BlindStatusField(Field[int]):
@@ -529,6 +586,34 @@ def _collect_fields(cls: type) -> dict[str, Field]:
     return fields
 
 
+def _validate_no_overlapping_bitfields(
+    cls: type, fields: dict[str, Field]
+) -> None:
+    """Validate that no BitFields on the same byte share bit masks."""
+    used_masks: dict[int, int] = {}
+    field_names_by_bit: dict[tuple[int, int], str] = {}
+
+    for name, field in fields.items():
+        if isinstance(field, BitField) and field.byte_index is not None:
+            byte_idx = field.byte_index
+            mask = field.mask
+            occupied = used_masks.get(byte_idx, 0)
+            if occupied & mask:
+                overlapping_mask = occupied & mask
+                existing_field = next(
+                    f_name
+                    for (b, b_mask), f_name in field_names_by_bit.items()
+                    if b == byte_idx and (b_mask & overlapping_mask)
+                )
+                raise TypeError(
+                    f"Overlapping bitfields on byte {byte_idx} in {cls.__name__}: "
+                    f"field '{name}' (mask 0x{mask:02X}) overlaps with '{existing_field}'"
+                )
+            used_masks[byte_idx] = occupied | mask
+            field_names_by_bit[(byte_idx, mask)] = name
+
+
+
 def _validate_data(
     self: DeclarativeMessage,
     priority: MessagePriority,
@@ -612,13 +697,36 @@ def _make_data_to_binary(
     serializable = _serializable_fields(fields)
 
     def data_to_binary(self: DeclarativeMessage) -> bytes:
-        result = bytes([cls._command_code])
+        byte_map: dict[int, int] = {}
+        ordered_keys: list[int | str] = []
+
         for field_name, field in serializable:
             value = getattr(self, field_name, field.default)
-            result += field.serialize(value)
-        return result
+            ser_bytes = field.serialize(value)
+
+            if field.byte_index is not None and len(ser_bytes) == 1:
+                idx = field.byte_index
+                if idx not in byte_map:
+                    byte_map[idx] = 0
+                    ordered_keys.append(idx)
+                byte_map[idx] |= ser_bytes[0]
+            else:
+                ordered_keys.append(field_name)
+
+        payload = bytearray([cls._command_code])
+        for key in ordered_keys:
+            if isinstance(key, int):
+                payload.append(byte_map[key])
+            else:
+                f_name: str = key  # type: ignore[assignment]
+                f_field = fields[f_name]
+                f_val = getattr(self, f_name, f_field.default)
+                payload.extend(f_field.serialize(f_val))
+
+        return bytes(payload)
 
     return data_to_binary
+
 
 
 def _make_to_json_basic(
@@ -679,7 +787,9 @@ class DeclarativeMessage(Message):
         super().__init_subclass__(**kwargs)
 
         fields = _collect_fields(cls)
+        _validate_no_overlapping_bitfields(cls, fields)
         cls._declarative_fields = fields
+
 
         if cls._auto_register and hasattr(cls, "_command_code"):
             module_types = cls._module_types

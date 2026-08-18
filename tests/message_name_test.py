@@ -1,6 +1,7 @@
 """Unit tests for the channel-name and memo-text message classes."""
 
 from __future__ import annotations
+from tests.utils import assert_roundtrip
 
 from velbusaio.const import PRIORITY_LOW
 from velbusaio.messages.channel_name_part1 import (
@@ -155,15 +156,19 @@ class TestMemoTextMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x00, 0x03]) + b"Hi\x00\x00\x00"
         msg = MemoTextMessage.from_bytes(
-            bytes([0x00, 0x03]) + b"Hi", address=0x01, priority=PRIORITY_LOW, rtr=False
+            data, address=0x01, priority=PRIORITY_LOW, rtr=False
         )
         assert msg.start == 3
         assert msg.name == "Hi"
+        assert_roundtrip(msg, data)
+
 
     def test_data_to_binary_pads_to_five(self):
         """Test Data to binary pads to five."""
         msg = MemoTextMessage()
         msg.start = 3
-        msg.memo_text = "Hi"
+        msg.name = "Hi"
         assert msg.data_to_binary() == bytes([0xAC, 0x00, 0x03]) + b"Hi\x00\x00\x00"
+

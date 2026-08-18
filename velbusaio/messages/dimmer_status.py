@@ -30,6 +30,8 @@ class DimmerStatusMessage(DeclarativeMessage):
     _data_length = 7
 
     dimmer_mode = ByteField(0)
+
+
     dimmer_state = ByteField(1)
     led_status = ByteField(2)
     delay_time = Int24Field(3)

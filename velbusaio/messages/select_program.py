@@ -16,7 +16,8 @@ class SelectProgramMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _data_length = 1
 
-    select_program = BitField(0, 0x03, default=0, serializable=True)
+    select_program = BitField(0, bit_range=(0, 1), default=0, serializable=True)
+
 
     def __init__(self, address: int = 0, program: int = 0):
         """Initialize Select Program Message Object."""

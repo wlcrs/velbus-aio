@@ -1,6 +1,7 @@
 """Unit tests for the thermostat mode-switch message classes."""
 
 from __future__ import annotations
+from tests.utils import assert_roundtrip
 
 import pytest
 
@@ -34,7 +35,8 @@ class TestSwitchToModeMessages:
 
     def test_populate_sets_attributes(self, cls, code):
         """Test Populate sets attributes."""
-        msg = cls.from_bytes(bytes([]), address=0x01, priority=PRIORITY_LOW, rtr=False)
+        data = bytes([])
+        msg = cls.from_bytes(data, address=0x01, priority=PRIORITY_LOW, rtr=False)
 
         assert msg.address == 0x01
         assert msg.rtr is False

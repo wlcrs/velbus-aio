@@ -14,8 +14,8 @@ from velbusaio.message_fields import (
 )
 
 COMMAND_CODE = 0xEA
-DSTATUS = {0: "run", 2: "manual", 4: "sleep", 6: "disable"}
-DMODE = {0: "safe", 16: "night", 32: "day", 64: "comfort"}
+STATUS_MAP = {0: "run", 1: "manual", 2: "sleep", 3: "disable"}
+MODE_MAP = {0: "safe", 1: "night", 2: "day", 4: "comfort"}
 
 
 class TempSensorStatusMessage(DeclarativeMessage):
@@ -26,29 +26,36 @@ class TempSensorStatusMessage(DeclarativeMessage):
     _data_length = 7
     _generates_data_to_binary = False
 
-    local_control = BitField(0, 0x01, default=0, serializable=False)
-    status_mode = BitField(0, 0x06, default=0, json_map=DSTATUS, serializable=False)
-    status_str = ComputedField(
-        parser=lambda data: DSTATUS[data[0] & 0x06],
-        default="run",
+    local_control = BitField(0, bit=0, default=0, serializable=False)
+    status_mode = BitField(
+        0,
+        bit_range=(1, 2),
+        default=0,
+        json_map=STATUS_MAP,
         serializable=False,
     )
-    auto_send = BitField(0, 0x08, default=0, serializable=False)
-    mode = BitField(0, 0x70, default=0, json_map=DMODE, serializable=False)
-    mode_str = ComputedField(
-        parser=lambda data: DMODE[data[0] & 0x70],
-        default="safe",
+    auto_send = BitField(0, bit=3, default=0, serializable=False)
+    mode = BitField(
+        0,
+        bit_range=(4, 6),
+        default=0,
+        json_map=MODE_MAP,
         serializable=False,
     )
-    cool_mode = BitField(0, 0x80, default=False, as_bool=True, serializable=False)
-    heater = BitField(2, 0x01, default=False, as_bool=True, serializable=False)
-    boost = BitField(2, 0x02, default=False, as_bool=True, serializable=False)
-    pump = BitField(2, 0x04, default=False, as_bool=True, serializable=False)
-    cooler = BitField(2, 0x08, default=False, as_bool=True, serializable=False)
-    alarm1 = BitField(2, 0x10, default=False, as_bool=True, serializable=False)
-    alarm2 = BitField(2, 0x20, default=False, as_bool=True, serializable=False)
-    alarm3 = BitField(2, 0x40, default=False, as_bool=True, serializable=False)
-    alarm4 = BitField(2, 0x80, default=False, as_bool=True, serializable=False)
+    cool_mode = BitField(0, bit=7, default=False, serializable=False)
+
+
+
+
+    heater = BitField(2, bit=0, default=False, serializable=False)
+    boost = BitField(2, bit=1, default=False, serializable=False)
+    pump = BitField(2, bit=2, default=False, serializable=False)
+    cooler = BitField(2, bit=3, default=False, serializable=False)
+    alarm1 = BitField(2, bit=4, default=False, serializable=False)
+    alarm2 = BitField(2, bit=5, default=False, serializable=False)
+    alarm3 = BitField(2, bit=6, default=False, serializable=False)
+    alarm4 = BitField(2, bit=7, default=False, serializable=False)
+
     current_temp = Field(
         byte_index=3,
         default=None,

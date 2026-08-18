@@ -61,11 +61,14 @@ class TestBitField:
 
     def test_bool_and_mask(self):
         """Test boolean and masked values."""
-        cool_mode = BitField(0, 0x80, as_bool=True)
-        status_mode = BitField(0, 0x06)
+        cool_mode = BitField(0, bit=7)
+        status_mode = BitField(0, bit_range=(1, 2))
         data = bytes([0x86, 0x00, 0x01])
         assert cool_mode.parse(data) is True
-        assert status_mode.parse(data) == 0x06
+        assert status_mode.parse(data) == 3
+
+
+
 
 
 class TestChannelField:
@@ -210,17 +213,80 @@ class TestDeclarativeMessage:
 
             status = BitField(
                 0,
-                0x06,
+                bit_range=(1, 2),
                 default=0,
                 serializable=False,
-                json_map={0: "run", 2: "manual"},
+                json_map={0: "run", 1: "manual"},
             )
+
+
+
 
         msg = _StatusMessage.from_bytes(
             bytes([0x02]), address=0x01, priority=PRIORITY_LOW, rtr=False
         )
         result = json.loads(msg.to_json())
         assert result["status"] == "manual"
+
+    def test_bitfield_explicit_bit_and_bit_range(self):
+        """Test BitField with explicit bit and bit_range parameters."""
+        f_single = BitField(0, bit=7)
+        assert f_single.mask == 0x80
+        assert f_single.shift == 7
+        assert f_single.as_bool is True
+        assert f_single.parse(bytes([0x80])) is True
+        assert f_single.serialize(True) == bytes([0x80])
+
+        f_range = BitField(0, bit_range=(5, 6))
+        assert f_range.mask == 0x60
+        assert f_range.shift == 5
+        assert f_range.as_bool is False
+        assert f_range.parse(bytes([0x60])) == 3
+        assert f_range.serialize(3) == bytes([0x60])
+
+        f_start_count = BitField(0, bit_start=1, bit_count=3)
+        assert f_start_count.mask == 0x0E
+        assert f_start_count.shift == 1
+
+    def test_bitfield_invalid_parameters_raise(self):
+        """Test invalid bit parameters raise ValueError."""
+        with pytest.raises(ValueError, match="byte_index must be >= 0"):
+            BitField(-1, bit=0)
+
+        with pytest.raises(ValueError, match="Must specify exactly one of"):
+            BitField(0)
+
+        with pytest.raises(ValueError, match="Must specify exactly one of"):
+            BitField(0, bit=0, bit_range=(0, 1))
+
+        with pytest.raises(ValueError, match="bit must be between 0 and 7"):
+            BitField(0, bit=8)
+
+        with pytest.raises(ValueError, match="bit_range must satisfy"):
+            BitField(0, bit_range=(5, 3))
+
+        with pytest.raises(ValueError, match="bit_range must satisfy"):
+            BitField(0, bit_range=(0, 8))
+
+        with pytest.raises(ValueError, match="bit_start must be between 0 and 7"):
+            BitField(0, bit_start=8, bit_count=1)
+
+        with pytest.raises(ValueError, match="bit_count must be between 1 and 2"):
+            BitField(0, bit_start=6, bit_count=3)
+
+    def test_overlapping_bitfields_raise(self):
+        """Test defining overlapping BitFields on a message class raises TypeError."""
+        with pytest.raises(
+            TypeError, match="Overlapping bitfields on byte 0 in _BadMsg: field 'flag_b'"
+        ):
+
+            class _BadMsg(DeclarativeMessage):
+                _command_code = 0x01
+                flag_a = BitField(0, bit_range=(0, 2))
+                flag_b = BitField(0, bit=2)
+
+
+
 
 
 class TestMessageValidation:

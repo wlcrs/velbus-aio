@@ -1,6 +1,7 @@
 """Unit tests for the request/simple command message classes."""
 
 from __future__ import annotations
+from tests.utils import assert_roundtrip
 
 import pytest
 
@@ -51,6 +52,7 @@ class TestBusActiveMessage:
         )
         assert msg.address == 0x01
 
+        assert msg.data_to_binary() == bytes([0x0A])
     def test_data_to_binary(self):
         """Test Data to binary."""
         assert BusActiveMessage().data_to_binary() == bytes([0x0A])
@@ -66,6 +68,7 @@ class TestBusOffMessage:
         )
         assert msg.address == 0x01
 
+        assert msg.data_to_binary() == bytes([9])
     def test_data_to_binary(self):
         """Test Data to binary."""
         assert BusOffMessage().data_to_binary() == bytes([0x09])
@@ -258,6 +261,7 @@ class TestModuleStatusRequestMessage:
         )
         assert msg.channels == [1, 2]
 
+        assert msg.data_to_binary() == bytes([0xFA, 3])
     def test_data_to_binary_list(self):
         """Test Data to binary list."""
         msg = ModuleStatusRequestMessage()
@@ -302,6 +306,7 @@ class TestChannelNameRequestMessage:
         )
         assert msg.channels == [1, 2]
 
+        assert msg.data_to_binary() == bytes([0xEF, 3])
     def test_data_to_binary_list(self):
         """Test Data to binary list."""
         msg = ChannelNameRequestMessage()
@@ -325,6 +330,7 @@ class TestChannelNameRequestMessage2:
         )
         assert msg.channels == [1, 2]
 
+        assert msg.data_to_binary() == bytes([0xEF, 0x0F])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ChannelNameRequestMessage2()
@@ -359,6 +365,7 @@ class TestCounterStatusRequestMessage:
         )
         assert msg.address == 0x01
 
+        assert msg.data_to_binary() == bytes([0xBD, 0, 0])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CounterStatusRequestMessage()

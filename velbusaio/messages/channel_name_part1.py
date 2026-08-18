@@ -40,4 +40,5 @@ class ChannelNamePart1Message3(ChannelNamePart1Message):
     _data_length = 5
     _generates_data_to_binary = False
 
-    channel = BitField(0, mask=0x06, shift=1)
+    channel = BitField(0, bit_range=(1, 2))
+

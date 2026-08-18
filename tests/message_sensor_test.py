@@ -1,6 +1,7 @@
 """Unit tests for sensor and temperature setpoint message classes."""
 
 from __future__ import annotations
+from tests.utils import assert_roundtrip
 
 from velbusaio.const import PRIORITY_LOW
 from velbusaio.messages.raw import MeteoRawMessage, SensorRawMessage
@@ -91,6 +92,7 @@ class TestSetTemperatureMessage:
         assert msg.temp_type == 0
         assert msg.temp == 5.0
 
+        assert msg.data_to_binary() == bytes([0xE4, 0, 0x0A])
     def test_populate_negative(self):
         """Test Populate with a negative temperature (two's complement)."""
         msg = SetTemperatureMessage.from_bytes(
@@ -98,6 +100,7 @@ class TestSetTemperatureMessage:
         )
         assert msg.temp == -32.0
 
+        assert msg.data_to_binary() == bytes([0xE4, 0, 0xC0])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SetTemperatureMessage()

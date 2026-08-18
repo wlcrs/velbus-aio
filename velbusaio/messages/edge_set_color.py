@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from enum import IntEnum
 
-from velbusaio.message_fields import BitField, DeclarativeMessage, Field
+from velbusaio.message_fields import BitField, ByteField, DeclarativeMessage, Field
+
 
 COMMAND_CODE = 0xD4
 
@@ -23,44 +24,25 @@ class SetEdgeColorMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _priority = None
 
-    apply_background_color = BitField(0, 0x01, as_bool=True, default=False)
-    custom_color_palette = BitField(0, 0x80, as_bool=True, default=False)
-    apply_to_left_edge = BitField(1, 0x01, as_bool=True, default=False)
-    apply_to_top_edge = BitField(1, 0x02, as_bool=True, default=False)
-    apply_to_right_edge = BitField(1, 0x04, as_bool=True, default=False)
-    apply_to_bottom_edge = BitField(1, 0x08, as_bool=True, default=False)
-    color_idx = BitField(2, 0x1F, default=0)
+    apply_background_color = BitField(0, bit=0, default=False)
+    apply_continuous_feedback_color = BitField(0, bit=1, default=False)
+    custom_color_palette = BitField(0, bit=7, default=False)
 
-    apply_continuous_feedback_color = Field(default=False, serializable=False)
+    apply_to_left_edge = BitField(1, bit=0, default=False)
+    apply_to_top_edge = BitField(1, bit=1, default=False)
+    apply_to_right_edge = BitField(1, bit=2, default=False)
+    apply_to_bottom_edge = BitField(1, bit=3, default=False)
+    apply_to_all_pages = BitField(1, bit=7, default=False)
+
+    color_idx = BitField(2, bit_range=(0, 4), default=0)
+    custom_color_priority = BitField(
+        2, bit_range=(5, 6), default=CustomColorPriority.LOW_PRIORITY
+    )
+    background_blinking = BitField(2, bit=7, default=False)
+
     apply_slow_blinking_feedback_color = Field(default=False, serializable=False)
     apply_fast_blinking_feedback_color = Field(default=False, serializable=False)
     apply_to_page = Field(default=None, serializable=False)
-    apply_to_all_pages = Field(default=False, serializable=False)
-    background_blinking = Field(default=False, serializable=False)
-    custom_color_priority = Field(
-        default=CustomColorPriority.LOW_PRIORITY, serializable=False
-    )
-
-    def data_to_binary(self):
-        """:return: bytes"""
-        byte_2 = (
-            (0x80 if self.custom_color_palette else 0x00)
-            | (0x01 if self.apply_background_color else 0x00)
-            | (0x02 if self.apply_continuous_feedback_color else 0x00)
-        )
-        byte_3 = (
-            (0x80 if self.apply_to_all_pages else 0x00)
-            | (0x08 if self.apply_to_bottom_edge else 0x00)
-            | (0x04 if self.apply_to_right_edge else 0x00)
-            | (0x02 if self.apply_to_top_edge else 0x00)
-            | (0x01 if self.apply_to_left_edge else 0x00)
-        )
-        byte_4 = (
-            (0x80 if self.background_blinking else 0x00)
-            | (self.custom_color_priority << 5)
-            | (self.color_idx & 0x1F)
-        )
-        return bytes([COMMAND_CODE, byte_2, byte_3, byte_4])
 
 
 class SetCustomColorMessage(DeclarativeMessage):
@@ -69,23 +51,11 @@ class SetCustomColorMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _auto_register = False
 
-    palette_idx = Field(default=0, serializable=False)
-    white_mode = Field(default=False, serializable=False)
-    saturation = Field(default=127, serializable=False)
-    red = Field(default=0, serializable=False)
-    green = Field(default=0, serializable=False)
-    blue = Field(default=0, serializable=False)
+    palette_idx = BitField(0, bit_range=(0, 4), default=0)
+    white_mode = BitField(1, bit=7, default=False)
+    saturation = BitField(1, bit_range=(0, 6), default=127)
+    red = ByteField(2, default=0)
+    green = ByteField(3, default=0)
+    blue = ByteField(4, default=0)
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        byte_3 = (0x80 if self.white_mode else 0x00) | (self.saturation & 0x7F)
-        return bytes(
-            [
-                COMMAND_CODE,
-                self.palette_idx & 0x1F,
-                byte_3,
-                self.red,
-                self.green,
-                self.blue,
-            ]
-        )
+

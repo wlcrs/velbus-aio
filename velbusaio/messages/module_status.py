@@ -42,12 +42,7 @@ class ModuleStatusMessage2(DeclarativeMessage):
     normal = ChannelsField(2)
     locked = ChannelsField(3)
     programenabled = ChannelsField(4)
-    selected_program = BitField(5, 0x03, serializable=True)
-    selected_program_str = ComputedField(
-        parser=lambda data: PROGRAM_SELECTION[data[5] & 0x03],
-        default=PROGRAM_SELECTION[0],
-        serializable=False,
-    )
+    selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION, serializable=True)
 
 
 class ModuleStatusPirMessage(DeclarativeMessage):
@@ -57,21 +52,16 @@ class ModuleStatusPirMessage(DeclarativeMessage):
     _data_length = 7
     _generates_data_to_binary = False
 
-    dark = BitField(0, 1 << 0, as_bool=True, default=False)  # data[0] bit 1
-    light = BitField(0, 1 << 1, as_bool=True, default=False)  # data[0] bit 2
-    motion1 = BitField(0, 1 << 2, as_bool=True, default=False)  # data[0] bit 3
-    light_motion1 = BitField(0, 1 << 3, as_bool=True, default=False)  # data[0] bit 4
-    motion2 = BitField(0, 1 << 4, as_bool=True, default=False)  # data[0] bit 5
-    light_motion2 = BitField(0, 1 << 5, as_bool=True, default=False)  # data[0] bit 6
-    low_temp_alarm = BitField(0, 1 << 6, as_bool=True, default=False)  # data[0] bit 7
-    high_temp_alarm = BitField(0, 1 << 7, as_bool=True, default=False)  # data[0] bit 8
+    dark = BitField(0, bit=0, default=False)  # data[0] bit 1
+    light = BitField(0, bit=1, default=False)  # data[0] bit 2
+    motion1 = BitField(0, bit=2, default=False)  # data[0] bit 3
+    light_motion1 = BitField(0, bit=3, default=False)  # data[0] bit 4
+    motion2 = BitField(0, bit=4, default=False)  # data[0] bit 5
+    light_motion2 = BitField(0, bit=5, default=False)  # data[0] bit 6
+    low_temp_alarm = BitField(0, bit=6, default=False)  # data[0] bit 7
+    high_temp_alarm = BitField(0, bit=7, default=False)  # data[0] bit 8
     light_value = Int16Field(1)  # data[1] and data[2]
-    selected_program = BitField(5, 0x03)  # data[5]
-    selected_program_str = ComputedField(
-        parser=lambda data: PROGRAM_SELECTION[data[5] & 0x03],
-        default=PROGRAM_SELECTION[0],
-        serializable=False,
-    )
+    selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION)
 
 
 class ModuleStatusGP4PirMessage(DeclarativeMessage):
@@ -90,10 +80,7 @@ class ModuleStatusGP4PirMessage(DeclarativeMessage):
         serializable=False,
     )  # data[1] and data[2]
     programenabled = ChannelsField(4)  # data[4]
-    selected_program = BitField(5, 0x03)  # data[5]
-    selected_program_str = ComputedField(
-        parser=lambda data: PROGRAM_SELECTION[data[5] & 0x03],
-        default=PROGRAM_SELECTION[0],
-        serializable=False,
-    )
+    selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION)
     light_value_send_interval = ByteField(6, default=0)  # data[6]
+
+

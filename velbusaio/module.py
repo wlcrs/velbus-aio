@@ -730,16 +730,19 @@ class Module:
         """Handle temperature sensor status messages."""
         chan = self._translate_channel_name(self._data["TemperatureChannel"])
         if chan in self._channels:
+            status_map = {0: "run", 1: "manual", 2: "sleep", 3: "disable"}
+            mode_map = {0: "safe", 1: "night", 2: "day", 4: "comfort"}
             await self._update_channel(
                 chan,
                 {
                     "target": message.target_temp,
-                    "cmode": message.mode_str,
-                    "cstatus": message.status_str,
+                    "cmode": mode_map.get(message.mode, "safe"),
+                    "cstatus": status_map.get(message.status_mode, "run"),
                     "sleep_timer": message.sleep_timer,
                     "cool_mode": message.cool_mode,
                 },
             )
+
             temp_channel = self._channels[chan]
             if isinstance(temp_channel, TemperatureChannelType):
                 await temp_channel.maybe_update_temperature(message.current_temp, 1 / 2)
@@ -844,9 +847,10 @@ class Module:
                 self._channels[channel], (Button, ButtonCounter)
             ):
                 await self._update_channel(channel, {"enabled": False})
+        program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
         await self._update_property(
             "selected_program",
-            {"selected_program_str": message.selected_program_str},
+            {"selected_program_str": program_selection.get(message.selected_program, "none")},
         )
 
     async def _handle_counter_status(self, message: CounterStatusMessage) -> None:
@@ -864,6 +868,7 @@ class Module:
 
     async def _handle_module_status_pir(self, message: ModuleStatusPirMessage) -> None:
         """Handle PIR module status messages."""
+        program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
         await self._update_property("light_value", {"cur": message.light_value})
         await self._update_channel(1, {"closed": message.dark})
         await self._update_channel(2, {"closed": message.light})
@@ -877,13 +882,14 @@ class Module:
             await self._update_channel(8, {"closed": message.high_temp_alarm})
         await self._update_property(
             "selected_program",
-            {"selected_program_str": message.selected_program_str},
+            {"selected_program_str": program_selection.get(message.selected_program, "none")},
         )
 
     async def _handle_module_status_gp4_pir(
         self, message: ModuleStatusGP4PirMessage, channel_offset: int
     ) -> None:
         """Handle GP4 PIR module status messages."""
+        program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
         await self._update_property("light_value", {"cur": message.light_value})
         for channel_id in range(1, 9):
             channel = self._translate_channel_name(channel_id + channel_offset)
@@ -898,8 +904,9 @@ class Module:
                 )
         await self._update_property(
             "selected_program",
-            {"selected_program_str": message.selected_program_str},
+            {"selected_program_str": program_selection.get(message.selected_program, "none")},
         )
+
 
     async def _handle_led_status(
         self, message: UpdateLedStatusMessage, channel_offset: int

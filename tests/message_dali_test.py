@@ -9,6 +9,7 @@ against a throw-away registry via the ``_fresh_registry`` fixture.
 """
 
 from __future__ import annotations
+from tests.utils import assert_roundtrip
 
 import importlib
 import sys
@@ -108,19 +109,23 @@ class TestDaliDeviceSettingsRequest:
 
     def test_populate_without_settings(self):
         """Test Populate without settings."""
+        data = bytes([0x05, 0x00])
         msg = DaliDeviceSettingsRequest.from_bytes(
-            bytes([0x05, 0x00]), address=0x01, priority=PRIORITY_LOW, rtr=False
+            data, address=0x01, priority=PRIORITY_LOW, rtr=False
         )
         assert msg.channel == 5
         assert msg.data_source == DataSource.FromMemory
         assert msg.settings is None
+        assert_roundtrip(msg, data)
 
     def test_populate_with_settings(self):
         """Test Populate with settings."""
+        data = bytes([0x05, 0x00, 0x19])
         msg = DaliDeviceSettingsRequest.from_bytes(
-            bytes([0x05, 0x00, 0x19]), address=0x01, priority=PRIORITY_LOW, rtr=False
+            data, address=0x01, priority=PRIORITY_LOW, rtr=False
         )
         assert msg.settings == 0x19
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary_all(self):
         """Test Data to binary all."""
@@ -151,6 +156,7 @@ class TestSetEdgeColorMessage:
         assert msg.apply_to_bottom_edge is True
         assert msg.color_idx == 31
 
+        assert msg.data_to_binary() == bytes([0xD4, 0x81, 0x0F, 0x1F])
     def test_data_to_binary_defaults(self):
         """Test Data to binary defaults."""
         msg = SetEdgeColorMessage()

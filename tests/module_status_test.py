@@ -76,12 +76,12 @@ async def test_module_status_selected_program(module_type):
         # test all possible program selections
         for program in PROGRAM_SELECTION.keys():
             msg.selected_program = program
-            msg.selected_program_str = PROGRAM_SELECTION[program]
             await m.on_message(msg)
             assert (
                 m._properties["selected_program"].get_selected_program()
                 == PROGRAM_SELECTION[program]
             )
+
 
             # Send the select_program message and check if the binary data is ok
             await m._properties["selected_program"].set_selected_program(

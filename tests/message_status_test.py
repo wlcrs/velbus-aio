@@ -1,6 +1,7 @@
 """Unit tests for the status/report message classes."""
 
 from __future__ import annotations
+from tests.utils import assert_roundtrip
 
 import json
 
@@ -144,6 +145,7 @@ class TestModuleStatusMessage:
         assert msg.led_slow_blinking == [3]
         assert msg.led_fast_blinking == [4]
 
+        assert msg.data_to_binary() == bytes([0xED, 1, 2, 4, 8])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ModuleStatusMessage()
@@ -171,7 +173,8 @@ class TestModuleStatusMessage2:
         assert msg.locked == [4]
         assert msg.programenabled == [5]
         assert msg.selected_program == 1
-        assert msg.selected_program_str == "summer"
+
+        assert msg.data_to_binary() == bytes([0xED, 1, 2, 4, 8, 0x10, 1])
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -268,6 +271,7 @@ class TestRelayStatusMessage:
         assert msg.is_on()
         assert msg.delay_time == 5
 
+        assert msg.data_to_binary() == bytes([0xFB, 1, 0, 1, 0, 0, 0, 5])
     def test_state_helpers(self):
         """Test State helpers."""
         msg = RelayStatusMessage()
@@ -340,6 +344,7 @@ class TestDimmerStatusMessage:
         assert msg.cur_dimmer_state() == 100
         assert msg.dimmer_config == 1
 
+        assert msg.data_to_binary() == bytes([0xEE, 2, 0x64, 0, 0, 0, 0])
     def test_mode_helpers(self):
         """Test Mode helpers."""
         msg = DimmerStatusMessage()
@@ -366,6 +371,8 @@ class TestDimmerStatusMessage:
         assert msg.data_to_binary() == bytes([0xEE, 0x02, 100, 0x00, 0, 0, 1])
 
 
+
+
 class TestDimmerChannelStatusMessage:
     """Tests for DimmerChannelStatusMessage."""
 
@@ -382,6 +389,7 @@ class TestDimmerChannelStatusMessage:
         assert msg.cur_dimmer_state() == 100
         assert msg.delay_time == 2
 
+        assert msg.data_to_binary() == bytes([0xB8, 1, 0, 0x64, 0, 0, 0, 2])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = DimmerChannelStatusMessage()
@@ -403,6 +411,7 @@ class TestSliderStatusMessage:
         assert msg.cur_slider_state() == 0x50
         assert msg.slider_long_pressed == 0
 
+        assert msg.data_to_binary() == bytes([0x0F, 1, 0x50, 0])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SliderStatusMessage()
@@ -422,9 +431,10 @@ class TestTempSensorStatusMessage:
             priority=PRIORITY_LOW,
             rtr=False,
         )
-        assert msg.status_str == "run"
-        assert msg.mode_str == "safe"
+        assert msg.status_mode == 0
+        assert msg.mode == 0
         assert msg.getCurTemp() == 21.0
+
         assert msg.target_temp == 20.0
         assert msg.sleep_timer == 0
 
@@ -454,6 +464,7 @@ class TestPushButtonStatusMessage:
         assert msg.closed_long == [3]
         assert msg.get_channels() == [1, 2]
 
+        assert msg.data_to_binary() == bytes([0, 1, 2, 4])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = PushButtonStatusMessage()
@@ -483,6 +494,7 @@ class TestIRReceiverStatusMessage:
         assert msg.led_on == [2]
 
 
+        assert msg.data_to_binary() == bytes([0xEB, 1, 2, 4, 8])
 class TestCounterStatusMessage:
     """Tests for CounterStatusMessage."""
 
@@ -551,6 +563,7 @@ class TestPsuLoadMessage:
         assert msg.out == 70
 
 
+        assert msg.data_to_binary() == bytes([0xA2, 1, 0x32, 0x3C, 0x46])
 class TestPsuValuesMessage:
     """Tests for PsuValuesMessage."""
 
@@ -568,6 +581,7 @@ class TestPsuValuesMessage:
         assert msg.amp == 0.01
 
 
+        assert msg.data_to_binary() == bytes([0xA3, 0x10, 0, 0x64, 0, 0xC8, 0, 0x0A])
 class TestBusErrorCounterStatusMessage:
     """Tests for BusErrorCounterStatusMessage."""
 
@@ -580,6 +594,7 @@ class TestBusErrorCounterStatusMessage:
         assert msg.receive_error_counter == 2
         assert msg.bus_off_counter == 3
 
+        assert msg.data_to_binary() == bytes([0xDA, 1, 2, 3])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = BusErrorCounterStatusMessage()
@@ -600,6 +615,7 @@ class TestDimValueStatus:
         assert msg.channel == 5
         assert msg.dim_values == [100, 50]
 
+        assert msg.data_to_binary() == bytes([0xA5, 5, 0x64, 0x32])
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = DimValueStatus()

@@ -14,14 +14,11 @@ class MemoTextMessage(DeclarativeMessage):
     """Memo Text Message."""
 
     _command_code = COMMAND_CODE
+    _data_length = 7
 
+    _dummy = ByteField(0, default=0)
     start = ByteField(1)
-    name = StringField(2)
-    memo_text = Field(default="", serializable=False)
+    name = StringField(2, length=5)
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        memo_text = self.memo_text
-        while len(memo_text) < 5:
-            memo_text += chr(0)
-        return bytes([COMMAND_CODE, 0x00, self.start]) + bytes(memo_text, "utf-8")
+
+
