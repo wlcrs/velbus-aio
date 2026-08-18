@@ -16,11 +16,7 @@ class MeteoRawMessage(Message):
     """Meteo Raw Message."""
 
     def __init__(
-        self,
-        address: int = 0,
-        rain: float = 0,
-        light: float = 0,
-        wind: float = 0,
+        self, address: int = 0, rain: float = 0, light: float = 0, wind: float = 0
     ) -> None:
         """Initialize Meteo Raw Message Object."""
         Message.__init__(self, address=address)

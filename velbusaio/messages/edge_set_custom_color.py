@@ -17,10 +17,8 @@ class EdgeSetCustomColor(DeclarativeMessage):
     _priority = None
 
     pallet = ByteField(0, default=31)
-    rgb = BitField(1, bit=7, default=False)
-    saturation = BitField(1, bit_range=(0, 6), default=0)
-    red = ByteField(2, default=0)
-    green = ByteField(3, default=0)
-    blue = ByteField(4, default=0)
-
-
+    rgb = BitField(1, bit=7)
+    saturation = BitField(1, bit_range=(0, 6))
+    red = ByteField(2)
+    green = ByteField(3)
+    blue = ByteField(4)

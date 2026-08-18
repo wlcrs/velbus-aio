@@ -1,7 +1,6 @@
 """Unit tests for the control/actuation message classes."""
 
 from __future__ import annotations
-from tests.utils import assert_roundtrip
 
 import pytest
 
@@ -52,6 +51,7 @@ class TestCoverOffMessage:
         assert msg.priority == PRIORITY_HIGH
 
         assert msg.data_to_binary() == bytes([4, 1])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CoverOffMessage()
@@ -77,6 +77,7 @@ class TestCoverOffMessage2:
         assert msg.channel == 1
 
         assert msg.data_to_binary() == bytes([4, 3])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CoverOffMessage2()
@@ -98,6 +99,7 @@ class TestCoverUpMessage:
         assert msg.delay_time == 5
 
         assert msg.data_to_binary() == bytes([5, 1, 0, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CoverUpMessage()
@@ -118,6 +120,7 @@ class TestCoverUpMessage2:
         assert msg.delay_time == 5
 
         assert msg.data_to_binary() == bytes([5, 3, 0, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CoverUpMessage2()
@@ -138,6 +141,7 @@ class TestCoverDownMessage:
         assert msg.delay_time == 5
 
         assert msg.data_to_binary() == bytes([6, 1, 0, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CoverDownMessage()
@@ -169,6 +173,7 @@ class TestCoverPosMessage:
         assert msg.position == 50
 
         assert msg.data_to_binary() == bytes([0x1C, 1, 0x32])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CoverPosMessage()
@@ -188,6 +193,7 @@ class TestSwitchRelayOffMessage:
         assert msg.relay_channels == [1, 2]
 
         assert msg.data_to_binary() == bytes([1, 3])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SwitchRelayOffMessage()
@@ -222,6 +228,7 @@ class TestSwitchRelayOnMessage:
         assert msg.relay_channels == [1, 2]
 
         assert msg.data_to_binary() == bytes([2, 3])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SwitchRelayOnMessage()
@@ -258,6 +265,7 @@ class TestSetDimmerMessage:
         assert msg.dimmer_transitiontime == 5
 
         assert msg.data_to_binary() == bytes([7, 1, 0x64, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SetDimmerMessage()
@@ -307,6 +315,7 @@ class TestRestoreDimmerMessage:
         assert msg.dimmer_transitiontime == 5
 
         assert msg.data_to_binary() == bytes([0x11, 1, 0, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = RestoreDimmerMessage.from_bytes(
@@ -390,6 +399,7 @@ class TestForcedOff:
         assert msg.delay_time == 5
 
         assert msg.data_to_binary() == bytes([0x12, 1, 0, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ForcedOff()
@@ -417,6 +427,7 @@ class TestForcedOn:
         assert msg.delay_time == 0x0100
 
         assert msg.data_to_binary() == bytes([0x14, 2, 0, 1, 0])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ForcedOn()
@@ -440,6 +451,7 @@ class TestInhibit:
         assert msg.delay_time == 5
 
         assert msg.data_to_binary() == bytes([0x16, 1, 0, 0, 5])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = Inhibit()
@@ -459,6 +471,7 @@ class TestCancelForcedOff:
         assert msg.channel == 2
 
         assert msg.data_to_binary() == bytes([0x13, 2])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = CancelForcedOff()
@@ -497,6 +510,7 @@ class TestSetLedMessage:
         assert msg.leds == [1, 2]
 
         assert msg.data_to_binary() == bytes([0xF6, 3])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SetLedMessage()
@@ -515,6 +529,7 @@ class TestClearLedMessage:
         assert msg.leds == [1]
 
         assert msg.data_to_binary() == bytes([0xF5, 1])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ClearLedMessage()
@@ -571,6 +586,7 @@ class TestUpdateLedStatusMessage:
         assert msg.led_fast_blinking == [3]
 
         assert msg.data_to_binary() == bytes([0xF4, 1, 2, 4])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = UpdateLedStatusMessage()

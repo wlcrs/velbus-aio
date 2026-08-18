@@ -36,11 +36,9 @@ class RestoreDimmerMessage(DeclarativeMessage):
     _data_length = 4
 
     dimmer_channels = ChannelsField(0)
-    _padding = ByteField(1, default=0)
+    _padding = ByteField(1)
     dimmer_transitiontime = Field(
-        default=0,
-        parser=_parse_transition,
-        serializer=_serialize_transition,
+        default=0, parser=_parse_transition, serializer=_serialize_transition
     )
 
 

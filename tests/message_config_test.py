@@ -1,7 +1,6 @@
 """Unit tests for configuration, type and memory message classes."""
 
 from __future__ import annotations
-from tests.utils import assert_roundtrip
 
 from velbusaio.const import PRIORITY_FIRMWARE, PRIORITY_LOW
 from velbusaio.messages.memory_data import MemoryDataMessage
@@ -113,6 +112,7 @@ class TestSetDate:
         assert msg._year == 2025
 
         assert msg.data_to_binary() == bytes([0xB7, 0x0F, 6, 7, 0xE9])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SetDate(0x01, day=15, mon=6, year=2025)
@@ -130,6 +130,7 @@ class TestSetDaylightSaving:
         assert msg._ds == 1
 
         assert msg.data_to_binary() == bytes([0xAF, 1])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SetDaylightSaving(0x01, ds=1)
@@ -149,6 +150,7 @@ class TestSetRealtimeClock:
         assert msg._min == 30
 
         assert msg.data_to_binary() == bytes([0xD8, 2, 0x0C, 0x1E])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SetRealtimeClock(0x01, wday=2, hour=12, min=30)
@@ -166,6 +168,7 @@ class TestSelectProgramMessage:
         assert msg.select_program == 2
 
         assert msg.data_to_binary() == bytes([0xB3, 2])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = SelectProgramMessage(program=1)
@@ -185,6 +188,7 @@ class TestWriteDataToMemoryMessage:
         assert msg.data == 3
 
         assert msg.data_to_binary() == bytes([0xFC, 1, 2, 3])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = WriteDataToMemoryMessage()
@@ -210,6 +214,7 @@ class TestWriteMemoryBlockMessage:
         assert msg.data == bytes([0x0A, 0x0B, 0x0C, 0x0D])
 
         assert msg.data_to_binary() == bytes([0xCA, 1, 2, 0x0A, 0x0B, 0x0C, 0x0D])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = WriteMemoryBlockMessage()
@@ -232,6 +237,7 @@ class TestMemoryDataMessage:
         assert msg.data == 3
 
         assert msg.data_to_binary() == bytes([0xFE, 1, 2, 3])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = MemoryDataMessage()
@@ -257,6 +263,7 @@ class TestMemoryDataBlockMessage:
         assert msg.data == bytes([0x0A, 0x0B, 0x0C, 0x0D])
 
         assert msg.data_to_binary() == bytes([0xCC, 1, 2, 0x0A, 0x0B, 0x0C, 0x0D])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = MemoryDataBlockMessage()
@@ -278,6 +285,7 @@ class TestReadDataFromMemoryMessage:
         assert msg.low_address == 0x0B
 
         assert msg.data_to_binary() == bytes([0xFD, 0x0A, 0x0B])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ReadDataFromMemoryMessage()
@@ -298,6 +306,7 @@ class TestReadDataBlockFromMemoryMessage:
         assert msg.low_address == 0x0B
 
         assert msg.data_to_binary() == bytes([0xC9, 0x0A, 0x0B])
+
     def test_data_to_binary(self):
         """Test Data to binary."""
         msg = ReadDataBlockFromMemoryMessage()

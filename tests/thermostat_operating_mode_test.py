@@ -17,8 +17,6 @@ from velbusaio.module import Module
 STATUS_MAP = {0: "run", 1: "manual", 2: "sleep", 3: "disable"}
 
 
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "status_mode, mode_name, sleep_timer",
@@ -72,4 +70,3 @@ async def test_thermostat_operating_mode(status_mode, mode_name, sleep_timer):
         sleep = 0x0
 
     assert check_sleep_timer == sleep
-

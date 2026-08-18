@@ -20,6 +20,5 @@ class SetTemperatureMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _data_length = 2
 
-    temp_type = ByteField(0, default=0)
+    temp_type = ByteField(0)
     temp = HalfDegreeField(1)
-

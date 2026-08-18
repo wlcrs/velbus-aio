@@ -16,9 +16,5 @@ class DimValueStatus(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _data_length = 2
 
-    channel = ByteField(0, default=0)
-    dim_values = Field(
-        default=[],
-        parser=lambda data: list(data[1:]),
-        serializer=bytes,
-    )
+    channel = ByteField(0)
+    dim_values = Field(default=[], parser=lambda data: list(data[1:]), serializer=bytes)

@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-from velbusaio.message_fields import (
-    BitField,
-    DeclarativeMessage,
-    Int16Field,
-    Int24Field,
-)
+from velbusaio.message_fields import BitField, DeclarativeMessage, Int16Field
 
 COMMAND_CODE = 0xA3
 
@@ -63,5 +58,3 @@ class PsuValuesMessage(DeclarativeMessage):
     @amp.setter
     def amp(self, value: float) -> None:
         self.raw_amp = int(round(value * 1000))
-
-

@@ -7,12 +7,10 @@ from __future__ import annotations
 
 from velbusaio.message_fields import (
     BitField,
-    ChannelField,
     DeclarativeMessage,
     Int24Field,
     Int32Field,
 )
-
 
 COMMAND_CODE = 0xA4
 
@@ -39,8 +37,6 @@ class CounterValueMessage(DeclarativeMessage):
     channel = BitField(0, bit_range=(4, 7), offset=1)
     power = Int24Field(0, bit_range=(0, 19))
     energy = Int32Field(3)
-
-
 
     def get_channels(self):
         """:return: list"""

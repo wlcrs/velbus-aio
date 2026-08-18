@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from velbusaio.message_fields import ByteField, DeclarativeMessage, Field, StringField
+from velbusaio.message_fields import ByteField, DeclarativeMessage, StringField
 
 COMMAND_CODE = 0xAC
 
@@ -16,9 +16,6 @@ class MemoTextMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _data_length = 7
 
-    _dummy = ByteField(0, default=0)
+    _dummy = ByteField(0)
     start = ByteField(1)
     name = StringField(2, length=5)
-
-
-

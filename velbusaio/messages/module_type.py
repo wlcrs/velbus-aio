@@ -8,7 +8,7 @@ from __future__ import annotations
 import struct
 
 from velbusaio.command_registry import MODULE_DIRECTORY
-from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage, Field
+from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage
 
 COMMAND_CODE = 0xFF
 MODULES_WITHOUT_SERIAL = {
@@ -30,8 +30,8 @@ def _parse_serial(data: bytes) -> int:
     """Parse the serial number when the module reports one."""
     if data[0] in MODULES_WITHOUT_SERIAL:
         return 0
-    (serial,) = struct.unpack(">L", bytes([0, 0, data[1], data[2]]))
-    return serial
+    return (data[1] << 8) | data[2]
+
 
 
 class ModuleTypeMessage(DeclarativeMessage):
@@ -69,7 +69,6 @@ class ModuleType2Message(DeclarativeMessage):
     build_year = ByteField(4)
     build_week = ByteField(5)
     term = ByteField(6)
-
 
     def module_name(self) -> str:
         """:return: str"""

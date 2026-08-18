@@ -850,7 +850,11 @@ class Module:
         program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
         await self._update_property(
             "selected_program",
-            {"selected_program_str": program_selection.get(message.selected_program, "none")},
+            {
+                "selected_program_str": program_selection.get(
+                    message.selected_program, "none"
+                )
+            },
         )
 
     async def _handle_counter_status(self, message: CounterStatusMessage) -> None:
@@ -882,7 +886,11 @@ class Module:
             await self._update_channel(8, {"closed": message.high_temp_alarm})
         await self._update_property(
             "selected_program",
-            {"selected_program_str": program_selection.get(message.selected_program, "none")},
+            {
+                "selected_program_str": program_selection.get(
+                    message.selected_program, "none"
+                )
+            },
         )
 
     async def _handle_module_status_gp4_pir(
@@ -904,9 +912,12 @@ class Module:
                 )
         await self._update_property(
             "selected_program",
-            {"selected_program_str": program_selection.get(message.selected_program, "none")},
+            {
+                "selected_program_str": program_selection.get(
+                    message.selected_program, "none"
+                )
+            },
         )
-
 
     async def _handle_led_status(
         self, message: UpdateLedStatusMessage, channel_offset: int

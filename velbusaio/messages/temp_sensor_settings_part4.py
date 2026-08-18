@@ -39,7 +39,7 @@ class TempSensorSettingsPart4(DeclarativeMessage):
     _data_length = 1
     _generates_data_to_binary = False
 
-    min_switching_time = ByteField(0, default=0)
+    min_switching_time = ByteField(0)
     pump_delayed_on = _optional_byte(1, 0)
     pump_delayed_off = _optional_byte(2, 0)
     alarm_2 = _optional_half(3)

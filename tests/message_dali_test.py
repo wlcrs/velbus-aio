@@ -9,13 +9,13 @@ against a throw-away registry via the ``_fresh_registry`` fixture.
 """
 
 from __future__ import annotations
-from tests.utils import assert_roundtrip
 
 import importlib
 import sys
 
 import pytest
 
+from tests.utils import assert_roundtrip
 import velbusaio.command_registry as cr
 from velbusaio.const import PRIORITY_LOW
 import velbusaio.messages  # noqa: F401  # ensure the package is registered in the real registry
@@ -157,6 +157,7 @@ class TestSetEdgeColorMessage:
         assert msg.color_idx == 31
 
         assert msg.data_to_binary() == bytes([0xD4, 0x81, 0x0F, 0x1F])
+
     def test_data_to_binary_defaults(self):
         """Test Data to binary defaults."""
         msg = SetEdgeColorMessage()

@@ -5,12 +5,7 @@
 
 from __future__ import annotations
 
-from velbusaio.message_fields import (
-    ByteField,
-    ChannelsField,
-    DeclarativeMessage,
-    Field,
-)
+from velbusaio.message_fields import ByteField, ChannelsField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0xEF
 
@@ -52,8 +47,6 @@ class ChannelNameRequestMessage2(ChannelNameRequestMessage):
     """Channel Name Request message (VMB2BL)."""
 
     channels = Vmb2blChannelsField(0)
-
-
 
 
 class ChannelNameRequestMessage3(ChannelNameRequestMessage):

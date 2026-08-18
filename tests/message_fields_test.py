@@ -68,9 +68,6 @@ class TestBitField:
         assert status_mode.parse(data) == 3
 
 
-
-
-
 class TestChannelField:
     """Tests for ChannelField."""
 
@@ -219,9 +216,6 @@ class TestDeclarativeMessage:
                 json_map={0: "run", 1: "manual"},
             )
 
-
-
-
         msg = _StatusMessage.from_bytes(
             bytes([0x02]), address=0x01, priority=PRIORITY_LOW, rtr=False
         )
@@ -277,16 +271,14 @@ class TestDeclarativeMessage:
     def test_overlapping_bitfields_raise(self):
         """Test defining overlapping BitFields on a message class raises TypeError."""
         with pytest.raises(
-            TypeError, match="Overlapping bitfields on byte 0 in _BadMsg: field 'flag_b'"
+            TypeError,
+            match="Overlapping bitfields on byte 0 in _BadMsg: field 'flag_b'",
         ):
 
             class _BadMsg(DeclarativeMessage):
                 _command_code = 0x01
                 flag_a = BitField(0, bit_range=(0, 2))
                 flag_b = BitField(0, bit=2)
-
-
-
 
 
 class TestMessageValidation:

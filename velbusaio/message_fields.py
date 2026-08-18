@@ -104,14 +104,12 @@ class ByteField(Field[int]):
             raise ValueError(f"byte_index must be >= 0, got {byte_index}")
         super().__init__(byte_index=byte_index, default=default, **kwargs)
 
-
     def parse(self, data: bytes) -> Any:
         """Parse byte from data."""
         assert self.byte_index is not None
         if self.byte_index >= len(data):
             return self.default
         return data[self.byte_index]
-
 
     def serialize(self, value: int) -> bytes:
         """Serialize to single byte."""
@@ -427,8 +425,6 @@ class Int24Field(Field[int]):
         return bytes([(val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF])
 
 
-
-
 class Int32Field(Field[int]):
     """32-bit integer field (big-endian, 4 bytes)."""
 
@@ -482,7 +478,6 @@ class BlindChannelField(Field[int]):
     def serialize(self, channel: int) -> bytes:
         """Serialize channel to VMB1BL/VMB2BL outgoing command relay bitmask (0x03 for ch1, 0x0C for ch2)."""
         return bytes([0x03 if channel == 1 else 0x0C])
-
 
 
 class BlindStatusField(Field[int]):
@@ -616,9 +611,7 @@ def _collect_fields(cls: type) -> dict[str, Field]:
     return fields
 
 
-def _validate_no_overlapping_bitfields(
-    cls: type, fields: dict[str, Field]
-) -> None:
+def _validate_no_overlapping_bitfields(cls: type, fields: dict[str, Field]) -> None:
     """Validate that no BitFields on the same byte share bit masks."""
     used_masks: dict[int, int] = {}
     field_names_by_bit: dict[tuple[int, int], str] = {}
@@ -641,7 +634,6 @@ def _validate_no_overlapping_bitfields(
                 )
             used_masks[byte_idx] = occupied | mask
             field_names_by_bit[(byte_idx, mask)] = name
-
 
 
 def _validate_data(
@@ -758,7 +750,6 @@ def _make_data_to_binary(
     return data_to_binary
 
 
-
 def _make_to_json_basic(
     cls: type, fields: dict[str, Field]
 ) -> Callable[[Any], dict[str, Any]]:
@@ -819,7 +810,6 @@ class DeclarativeMessage(Message):
         fields = _collect_fields(cls)
         _validate_no_overlapping_bitfields(cls, fields)
         cls._declarative_fields = fields
-
 
         if cls._auto_register and hasattr(cls, "_command_code"):
             module_types = cls._module_types

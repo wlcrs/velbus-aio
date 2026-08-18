@@ -35,9 +35,6 @@ class DaliDeviceSettingsRequest(DeclarativeMessage):
     )
     settings = ByteField(2, default=None, serializable=False)
 
-
-
-
     def data_to_binary(self) -> bytes:
         """Generate binary data for the message."""
         assert self.channel is not None

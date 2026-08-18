@@ -67,5 +67,3 @@ def assert_roundtrip(
     else:
         assert binary[0] == msg._command_code
         assert binary[1:] == bytes(expected_payload)
-
-

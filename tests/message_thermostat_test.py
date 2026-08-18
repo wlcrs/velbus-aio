@@ -1,7 +1,6 @@
 """Unit tests for the thermostat mode-switch message classes."""
 
 from __future__ import annotations
-from tests.utils import assert_roundtrip
 
 import pytest
 

@@ -7,9 +7,7 @@ from __future__ import annotations
 
 from velbusaio.message_fields import (
     BitField,
-    ChannelField,
     DeclarativeMessage,
-    Field,
     Int16Field,
     Int32Field,
 )

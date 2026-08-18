@@ -13,7 +13,6 @@ from velbusaio.message_fields import (
     Int16Field,
 )
 
-
 COMMAND_CODE = 0xEA
 STATUS_MAP = {0: "run", 1: "manual", 2: "sleep", 3: "disable"}
 MODE_MAP = {0: "safe", 1: "night", 2: "day", 4: "comfort"}
@@ -26,38 +25,25 @@ class TempSensorStatusMessage(DeclarativeMessage):
     _priority = None
     _data_length = 7
 
+    local_control = BitField(0, bit=0)
+    status_mode = BitField(0, bit_range=(1, 2), json_map=STATUS_MAP)
+    auto_send = BitField(0, bit=3)
+    mode = BitField(0, bit_range=(4, 6), json_map=MODE_MAP)
+    cool_mode = BitField(0, bit=7)
+    reserved = ByteField(1)
 
-    local_control = BitField(0, bit=0, default=0)
-    status_mode = BitField(
-        0,
-        bit_range=(1, 2),
-        default=0,
-        json_map=STATUS_MAP,
-    )
-    auto_send = BitField(0, bit=3, default=0)
-    mode = BitField(
-        0,
-        bit_range=(4, 6),
-        default=0,
-        json_map=MODE_MAP,
-    )
-    cool_mode = BitField(0, bit=7, default=False)
-    reserved = ByteField(1, default=0)
-
-    heater = BitField(2, bit=0, default=False)
-
-    boost = BitField(2, bit=1, default=False)
-    pump = BitField(2, bit=2, default=False)
-    cooler = BitField(2, bit=3, default=False)
-    alarm1 = BitField(2, bit=4, default=False)
-    alarm2 = BitField(2, bit=5, default=False)
-    alarm3 = BitField(2, bit=6, default=False)
-    alarm4 = BitField(2, bit=7, default=False)
+    heater = BitField(2, bit=0)
+    boost = BitField(2, bit=1)
+    pump = BitField(2, bit=2)
+    cooler = BitField(2, bit=3)
+    alarm1 = BitField(2, bit=4)
+    alarm2 = BitField(2, bit=5)
+    alarm3 = BitField(2, bit=6)
+    alarm4 = BitField(2, bit=7)
 
     current_temp = HalfDegreeField(3)
     target_temp = HalfDegreeField(4)
-    sleep_timer = Int16Field(5, default=0)
-
+    sleep_timer = Int16Field(5)
 
     def getCurTemp(self) -> float | None:
         """Get current temperature."""

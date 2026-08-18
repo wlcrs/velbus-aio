@@ -16,4 +16,4 @@ class SwitchToComfortMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _priority = None
 
-    sleep = Int16Field(0, default=0)
+    sleep = Int16Field(0)

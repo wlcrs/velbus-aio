@@ -5,7 +5,7 @@ author: Thomas Delaet <thomas@delaet.org>
 
 from __future__ import annotations
 
-from velbusaio.message_fields import ByteField, DeclarativeMessage, Field, Int16Field
+from velbusaio.message_fields import ByteField, DeclarativeMessage, Int16Field
 
 COMMAND_CODE = 0xB0
 COMMAND_CODE_2 = 0xA7
@@ -26,7 +26,6 @@ class ModuleSubTypeMessage(DeclarativeMessage):
     sub_address_3 = ByteField(5, default=0xFF)
     sub_address_4 = ByteField(6, default=0xFF)
     sub_address_offset: int = 0
-
 
     def module_name(self) -> str:
         """:return: str"""

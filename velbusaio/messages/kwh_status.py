@@ -7,9 +7,7 @@ from __future__ import annotations
 
 from velbusaio.message_fields import (
     BitField,
-    ChannelField,
     DeclarativeMessage,
-    Field,
     Int16Field,
     Int32Field,
 )
@@ -55,7 +53,6 @@ class KwhStatusMessage(DeclarativeMessage):
             return 0.0
         val = float((1000 * 1000 * 3600) / (self.delay * self.pulses))
         return val if val >= 55 else 0.0
-
 
     def get_channels(self):
         """:return: list"""

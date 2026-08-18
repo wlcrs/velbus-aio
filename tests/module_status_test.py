@@ -82,7 +82,6 @@ async def test_module_status_selected_program(module_type):
                 == PROGRAM_SELECTION[program]
             )
 
-
             # Send the select_program message and check if the binary data is ok
             await m._properties["selected_program"].set_selected_program(
                 PROGRAM_SELECTION[program]

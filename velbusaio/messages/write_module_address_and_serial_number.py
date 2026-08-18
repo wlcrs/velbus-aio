@@ -19,6 +19,6 @@ class WriteModuleAddressAndSerialNumberMessage(DeclarativeMessage):
     _data_length = 6
 
     module_type = ByteField(0, default=0x00)
-    current_serial = Int16Field(1, default=0)
+    current_serial = Int16Field(1)
     module_address = ByteField(3, default=0x00)
-    new_serial = Int16Field(4, default=0)
+    new_serial = Int16Field(4)

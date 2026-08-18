@@ -25,5 +25,5 @@ class TempSensorSettingsPart2(DeclarativeMessage):
     day_cooling = HalfDegreeField(1)
     night_cooling = HalfDegreeField(2)
     safe_cooling = HalfDegreeField(3)
-    default_sleep_timer = Int16Field(4, default=0)
-    autosend_interval = ByteField(6, default=0)
+    default_sleep_timer = Int16Field(4)
+    autosend_interval = ByteField(6)

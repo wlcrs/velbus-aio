@@ -38,9 +38,7 @@ class SetDimmerMessage(DeclarativeMessage):
     dimmer_channels = ChannelsField(0)
     dimmer_state = ByteField(1)
     dimmer_transitiontime = Field(
-        default=0,
-        parser=_parse_transition,
-        serializer=_serialize_transition,
+        default=0, parser=_parse_transition, serializer=_serialize_transition
     )
 
 

@@ -40,4 +40,3 @@ class ChannelNamePart3Message3(ChannelNamePart3Message):
     _generates_data_to_binary = False
 
     channel = BitField(0, bit_range=(1, 2))
-

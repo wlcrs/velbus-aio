@@ -9,7 +9,6 @@ from velbusaio.message_fields import (
     BitField,
     ByteField,
     ChannelsField,
-    ComputedField,
     DeclarativeMessage,
     Int16Field,
 )
@@ -42,7 +41,9 @@ class ModuleStatusMessage2(DeclarativeMessage):
     normal = ChannelsField(2)
     locked = ChannelsField(3)
     programenabled = ChannelsField(4)
-    selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION, serializable=True)
+    selected_program = BitField(
+        5, bit_range=(0, 1), json_map=PROGRAM_SELECTION, serializable=True
+    )
 
 
 class ModuleStatusPirMessage(DeclarativeMessage):
@@ -52,14 +53,14 @@ class ModuleStatusPirMessage(DeclarativeMessage):
     _data_length = 7
     _generates_data_to_binary = False
 
-    dark = BitField(0, bit=0, default=False)  # data[0] bit 1
-    light = BitField(0, bit=1, default=False)  # data[0] bit 2
-    motion1 = BitField(0, bit=2, default=False)  # data[0] bit 3
-    light_motion1 = BitField(0, bit=3, default=False)  # data[0] bit 4
-    motion2 = BitField(0, bit=4, default=False)  # data[0] bit 5
-    light_motion2 = BitField(0, bit=5, default=False)  # data[0] bit 6
-    low_temp_alarm = BitField(0, bit=6, default=False)  # data[0] bit 7
-    high_temp_alarm = BitField(0, bit=7, default=False)  # data[0] bit 8
+    dark = BitField(0, bit=0)  # data[0] bit 1
+    light = BitField(0, bit=1)  # data[0] bit 2
+    motion1 = BitField(0, bit=2)  # data[0] bit 3
+    light_motion1 = BitField(0, bit=3)  # data[0] bit 4
+    motion2 = BitField(0, bit=4)  # data[0] bit 5
+    light_motion2 = BitField(0, bit=5)  # data[0] bit 6
+    low_temp_alarm = BitField(0, bit=6)  # data[0] bit 7
+    high_temp_alarm = BitField(0, bit=7)  # data[0] bit 8
     light_value = Int16Field(1)  # data[1] and data[2]
     selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION)
 
@@ -77,7 +78,7 @@ class ModuleStatusGP4PirMessage(DeclarativeMessage):
     locked = ChannelsField(3)
     programenabled = ChannelsField(4)
     selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION)
-    light_value_send_interval = ByteField(6, default=0)
+    light_value_send_interval = ByteField(6)
 
     @property
     def enabled(self) -> list[int]:
@@ -101,6 +102,3 @@ class ModuleStatusGP4PirMessage(DeclarativeMessage):
     def light_value(self, value: int) -> None:
         self.light_value_hi = (value >> 8) & 0x03
         self.light_value_lo = value & 0xFF
-
-
-
