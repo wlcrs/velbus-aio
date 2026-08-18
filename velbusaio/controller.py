@@ -106,6 +106,8 @@ class Velbus:
         self._vlp_file = vlp_file
         self._cache_dir: str = cache_dir
         self._is_connected: bool = False
+        self._reconnect_task: asyncio.Task | None = None
+        self._last_connect_time: float = 0.0
         self._on_connect_callbacks: list[t.Callable[[], Awaitable[None]]] = []
         self._on_disconnect_callbacks: list[t.Callable[[], Awaitable[None]]] = []
         self._on_module_found_callbacks: list[
@@ -157,32 +159,54 @@ class Velbus:
         return self._is_connected
 
     async def _reconnect_loop(self) -> None:
-        """Keep retrying connect() until it succeeds or auto_reconnect is disabled."""
-        retry_delay = 10
-        while self._auto_reconnect and not self._closing:
+        """Keep retrying connect() until connected or auto_reconnect is disabled."""
+        max_delay = 60.0
+        stable_time = 30.0
+        reconnect_delay = 1.0
+
+        while self._auto_reconnect and not self._closing and not self._is_connected:
+            if self._last_connect_time > 0 and (
+                time.monotonic() - self._last_connect_time < stable_time
+            ):
+                self._log.warning(
+                    "Connection lost or failed, retrying in %.1fs", reconnect_delay
+                )
+                await asyncio.sleep(reconnect_delay)
+                reconnect_delay = min(reconnect_delay * 2, max_delay)
+
+            if self._closing or not self._auto_reconnect or self._is_connected:
+                break
+
             try:
                 await self.connect()
             except VelbusConnectionFailed:
-                self._log.warning("Reconnect failed, retrying in %ds", retry_delay)
-                await asyncio.sleep(retry_delay)
-                retry_delay = min(retry_delay * 2, 300)
+                self._log.warning(
+                    "Reconnect failed, retrying in %.1fs", reconnect_delay
+                )
+                await asyncio.sleep(reconnect_delay)
+                reconnect_delay = min(reconnect_delay * 2, max_delay)
             else:
-                return
+                break
 
     async def _on_connection_state(self, is_connected: bool) -> None:
         """Respond to Protocol connection state changes."""
         self._is_connected = is_connected
         if is_connected:
+            # Record connect time using a monotonic clock for elapsed checks
+            self._last_connect_time = time.monotonic()
             for callback in self._on_connect_callbacks:
                 await callback()
         else:
             for callback in self._on_disconnect_callbacks:
                 await callback()
             if self._auto_reconnect and not self._closing:
-                self._log.debug("Reconnecting to transport")
-                task = asyncio.ensure_future(self._reconnect_loop())
-                self._background_tasks.add(task)
-                task.add_done_callback(self._background_tasks.discard)
+                if self._reconnect_task is None or self._reconnect_task.done():
+                    self._log.debug("Reconnecting to transport")
+                    self._reconnect_task = asyncio.create_task(self._reconnect_loop())
+                    self._background_tasks.add(self._reconnect_task)
+                    self._reconnect_task.add_done_callback(
+                        self._background_tasks.discard
+                    )
         for mod in self._modules.values():
             for chan in mod.get_channels().values():
                 await chan.status_update()
@@ -255,6 +279,8 @@ class Velbus:
         """Stop the controller."""
         self._closing = True
         self._auto_reconnect = False
+        if self._reconnect_task and not self._reconnect_task.done():
+            self._reconnect_task.cancel()
         # Stop all scheduled tasks
         for task in self._scheduled_tasks.values():
             task.stop()
