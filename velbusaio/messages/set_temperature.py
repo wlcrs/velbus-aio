@@ -5,20 +5,9 @@
 
 from __future__ import annotations
 
-from velbusaio.message_fields import ComputedField, DeclarativeMessage, Field
+from velbusaio.message_fields import ByteField, DeclarativeMessage, HalfDegreeField
 
 COMMAND_CODE = 0xE4
-
-
-def _parse_temp(data: bytes) -> float:
-    raw = data[1]
-    if raw & 0x80:
-        raw -= 0x100
-    return raw / 2
-
-
-def _serialize_temp(value: float) -> bytes:
-    return bytes([int(round(value * 2)) & 0xFF])
 
 
 class SetTemperatureMessage(DeclarativeMessage):
@@ -31,10 +20,6 @@ class SetTemperatureMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _data_length = 2
 
-    temp_type = ComputedField(parser=lambda data: 0, default=0, serializable=True)
-    temp = Field(
-        byte_index=1,
-        default=0,
-        parser=_parse_temp,
-        serializer=_serialize_temp,
-    )
+    temp_type = ByteField(0, default=0)
+    temp = HalfDegreeField(1)
+

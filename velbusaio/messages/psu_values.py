@@ -5,7 +5,12 @@
 
 from __future__ import annotations
 
-from velbusaio.message_fields import ComputedField, DeclarativeMessage
+from velbusaio.message_fields import (
+    BitField,
+    DeclarativeMessage,
+    Int16Field,
+    Int24Field,
+)
 
 COMMAND_CODE = 0xA3
 
@@ -16,28 +21,47 @@ class PsuValuesMessage(DeclarativeMessage):
     _command_code = COMMAND_CODE
     _data_length = 7
 
-    channel = ComputedField(parser=lambda data: (data[0] & 0xF0) >> 4, default=0)
-    watt = ComputedField(
-        parser=lambda data: ((data[0] & 0x0F) << 16 | data[1] << 8 | data[2]) / 1000,
-        default=0,
-    )
-    volt = ComputedField(parser=lambda data: (data[3] << 8 | data[4]) / 1000, default=0)
-    amp = ComputedField(parser=lambda data: (data[5] << 8 | data[6]) / 1000, default=0)
+    channel = BitField(0, bit_range=(4, 7))
+    raw_watt_hi = BitField(0, bit_range=(0, 3))
+    raw_watt_lo = Int16Field(1)
+    raw_volt = Int16Field(3)
+    raw_amp = Int16Field(5)
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        watt = int(round(self.watt * 1000))
-        volt = int(round(self.volt * 1000))
-        amp = int(round(self.amp * 1000))
-        return bytes(
-            [
-                COMMAND_CODE,
-                ((self.channel & 0x0F) << 4) | ((watt >> 16) & 0x0F),
-                (watt >> 8) & 0xFF,
-                watt & 0xFF,
-                (volt >> 8) & 0xFF,
-                volt & 0xFF,
-                (amp >> 8) & 0xFF,
-                amp & 0xFF,
-            ]
-        )
+    @property
+    def raw_watt(self) -> int:
+        """Return raw 20-bit wattage value."""
+        return (self.raw_watt_hi << 16) | self.raw_watt_lo
+
+    @raw_watt.setter
+    def raw_watt(self, value: int) -> None:
+        self.raw_watt_hi = (value >> 16) & 0x0F
+        self.raw_watt_lo = value & 0xFFFF
+
+    @property
+    def watt(self) -> float:
+        """Return wattage in Watts."""
+        return self.raw_watt / 1000
+
+    @watt.setter
+    def watt(self, value: float) -> None:
+        self.raw_watt = int(round(value * 1000))
+
+    @property
+    def volt(self) -> float:
+        """Return voltage in Volts."""
+        return self.raw_volt / 1000
+
+    @volt.setter
+    def volt(self, value: float) -> None:
+        self.raw_volt = int(round(value * 1000))
+
+    @property
+    def amp(self) -> float:
+        """Return current in Amperes."""
+        return self.raw_amp / 1000
+
+    @amp.setter
+    def amp(self, value: float) -> None:
+        self.raw_amp = int(round(value * 1000))
+
+

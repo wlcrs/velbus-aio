@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import enum
 
-from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage
+from velbusaio.message_fields import ByteField, DeclarativeMessage, Field
 from velbusaio.messages.dali_device_settings import DaliDeviceSetting
 
 COMMAND_CODE = 0xE7
@@ -27,14 +27,16 @@ class DaliDeviceSettingsRequest(DeclarativeMessage):
     _data_length = 2
 
     channel = ByteField(0, default=None)
-    data_source = ComputedField(
-        parser=lambda data: DataSource(data[1]), default=None, serializable=False
-    )
-    settings = ComputedField(
-        parser=lambda data: data[2] if len(data) >= 3 else None,
-        default=None,
+    data_source = Field(
+        1,
+        parser=lambda data: DataSource(data[1]) if len(data) > 1 else None,
+        default=DataSource.FromMemory,
         serializable=False,
     )
+    settings = ByteField(2, default=None, serializable=False)
+
+
+
 
     def data_to_binary(self) -> bytes:
         """Generate binary data for the message."""

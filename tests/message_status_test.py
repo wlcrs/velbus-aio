@@ -569,8 +569,9 @@ class TestPsuValuesMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x10, 0x00, 0x64, 0x00, 0xC8, 0x00, 0x0A])
         msg = PsuValuesMessage.from_bytes(
-            bytes([0x10, 0x00, 0x64, 0x00, 0xC8, 0x00, 0x0A]),
+            data,
             address=0x01,
             priority=PRIORITY_LOW,
             rtr=False,
@@ -579,9 +580,8 @@ class TestPsuValuesMessage:
         assert msg.watt == 0.1
         assert msg.volt == 0.2
         assert msg.amp == 0.01
+        assert_roundtrip(msg, data)
 
-
-        assert msg.data_to_binary() == bytes([0xA3, 0x10, 0, 0x64, 0, 0xC8, 0, 0x0A])
 class TestBusErrorCounterStatusMessage:
     """Tests for BusErrorCounterStatusMessage."""
 

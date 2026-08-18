@@ -46,8 +46,8 @@ class ModuleTypeMessage(DeclarativeMessage):
         parser=lambda data: data[3] if data[0] not in MODULES_WITHOUT_SERIAL else 0,
         default=0,
     )
-    build_year = ComputedField(parser=lambda data: data[-2], default=0)
-    build_week = ComputedField(parser=lambda data: data[-1], default=0)
+    build_year = ByteField(4)
+    build_week = ByteField(5)
     led_on = Field(default=[], serializable=False)
     led_slow_blinking = Field(default=[], serializable=False)
     led_fast_blinking = Field(default=[], serializable=False)
@@ -69,9 +69,11 @@ class ModuleType2Message(DeclarativeMessage):
         parser=lambda data: data[3] if data[0] not in MODULES_WITHOUT_SERIAL else 0,
         default=0,
     )
-    build_year = ComputedField(parser=lambda data: data[-3], default=0)
-    build_week = ComputedField(parser=lambda data: data[-2], default=0)
-    term = ComputedField(parser=lambda data: data[-1], default=0)
+    build_year = ByteField(4)
+    build_week = ByteField(5)
+    term = ByteField(6)
+
+
     led_on = Field(default=[], serializable=False)
     led_slow_blinking = Field(default=[], serializable=False)
     led_fast_blinking = Field(default=[], serializable=False)

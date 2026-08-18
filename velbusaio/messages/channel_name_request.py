@@ -8,11 +8,35 @@ from __future__ import annotations
 from velbusaio.message_fields import (
     ByteField,
     ChannelsField,
-    ComputedField,
     DeclarativeMessage,
+    Field,
 )
 
 COMMAND_CODE = 0xEF
+
+
+class Vmb2blChannelsField(Field[list[int]]):
+    """Field for VMB2BL channel name request channels."""
+
+    def parse(self, data: bytes) -> list[int]:
+        """Parse requested VMB2BL channels."""
+        channels = []
+        tmp = (data[0] >> 1) & 0x03
+        if tmp & 0x01:
+            channels.append(1)
+        if tmp & 0x02:
+            channels.append(2)
+        return channels
+
+    def serialize(self, channels: list[int]) -> bytes:
+        """Serialize requested VMB2BL channels."""
+        tmp = 0x00
+        if isinstance(channels, list):
+            if 1 in channels:
+                tmp |= 0x03
+            if 2 in channels:
+                tmp |= 0x0C
+        return bytes([tmp])
 
 
 class ChannelNameRequestMessage(DeclarativeMessage):
@@ -27,22 +51,9 @@ class ChannelNameRequestMessage(DeclarativeMessage):
 class ChannelNameRequestMessage2(ChannelNameRequestMessage):
     """Channel Name Request message (VMB2BL)."""
 
-    channels = ComputedField(
-        parser=lambda data: [
-            offset + 1 for offset in range(8) if ((data[0] >> 1) & 0x03) & (1 << offset)
-        ],
-        default=[],
-    )
+    channels = Vmb2blChannelsField(0)
 
-    def data_to_binary(self):
-        """:return: bytes"""
-        tmp = 0x00
-        if isinstance(self.channels, list):
-            if 1 in self.channels:
-                tmp += 0x03
-            if 2 in self.channels:
-                tmp += 0x0C
-        return bytes([COMMAND_CODE, tmp])
+
 
 
 class ChannelNameRequestMessage3(ChannelNameRequestMessage):

@@ -5,7 +5,14 @@
 
 from __future__ import annotations
 
-from velbusaio.message_fields import ComputedField, DeclarativeMessage, Int32Field
+from velbusaio.message_fields import (
+    BitField,
+    ChannelField,
+    DeclarativeMessage,
+    Int24Field,
+    Int32Field,
+)
+
 
 COMMAND_CODE = 0xA4
 
@@ -29,12 +36,11 @@ class CounterValueMessage(DeclarativeMessage):
     _data_length = 7
     _generates_data_to_binary = False
 
-    channel = ComputedField(parser=lambda data: (data[0] >> 4) + 1, default=0)
-    power = ComputedField(
-        parser=lambda data: ((data[0] & 0x0F) << 16) + (data[1] << 8) + data[2],
-        default=0,
-    )
+    channel = BitField(0, bit_range=(4, 7), offset=1)
+    power = Int24Field(0, bit_range=(0, 19))
     energy = Int32Field(3)
+
+
 
     def get_channels(self):
         """:return: list"""

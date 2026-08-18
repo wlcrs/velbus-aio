@@ -100,14 +100,18 @@ class ByteField(Field[int]):
 
     def __init__(self, byte_index: int, default: int | None = 0, **kwargs: Any) -> None:
         """Initialize byte field."""
+        if byte_index < 0:
+            raise ValueError(f"byte_index must be >= 0, got {byte_index}")
         super().__init__(byte_index=byte_index, default=default, **kwargs)
 
-    def parse(self, data: bytes) -> int:
+
+    def parse(self, data: bytes) -> Any:
         """Parse byte from data."""
         assert self.byte_index is not None
         if self.byte_index >= len(data):
-            return self.default or 0
+            return self.default
         return data[self.byte_index]
+
 
     def serialize(self, value: int) -> bytes:
         """Serialize to single byte."""
@@ -125,6 +129,7 @@ class BitField(Field[Any]):
         bit_range: tuple[int, int] | None = None,
         bit_start: int | None = None,
         bit_count: int = 1,
+        offset: int = 0,
         default: Any = 0,
         as_bool: bool | None = None,
         json_map: dict[Any, Any] | None = None,
@@ -182,10 +187,8 @@ class BitField(Field[Any]):
 
         self.mask = mask
         self.shift = shift
+        self.offset = offset
         self.as_bool = bool(as_bool)
-
-
-
 
     def parse(self, data: bytes) -> Any:
         """Parse masked bits from data."""
@@ -195,14 +198,14 @@ class BitField(Field[Any]):
             value >>= self.shift
         if self.as_bool:
             return value != 0
-        return value
+        return value + self.offset
 
     def serialize(self, value: Any) -> bytes:
         """Serialize bit field (rarely used on transmit messages)."""
         if self.as_bool:
             bit_value = self.mask if value else 0
         else:
-            bit_value = (int(value) << self.shift) & self.mask
+            bit_value = ((int(value) - self.offset) << self.shift) & self.mask
         return bytes([bit_value])
 
 
@@ -381,22 +384,50 @@ class Int16Field(Field[int]):
 class Int24Field(Field[int]):
     """24-bit integer field (big-endian, 3 bytes)."""
 
-    def __init__(self, byte_index: int, default: int = 0, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        byte_index: int,
+        default: int = 0,
+        *,
+        bit_range: tuple[int, int] | None = None,
+        mask: int | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize 24-bit field."""
         super().__init__(byte_index=byte_index, default=default, **kwargs)
+        if bit_range is not None:
+            start, end = bit_range
+            count = end - start + 1
+            self.mask = ((1 << count) - 1) << start
+            self.shift = start
+        else:
+            self.mask = mask
+            self.shift = 0
 
     def parse(self, data: bytes) -> int:
         """Parse 24-bit value from three bytes."""
         assert self.byte_index is not None
-        return (
+        val = (
             (data[self.byte_index] << 16)
             | (data[self.byte_index + 1] << 8)
             | data[self.byte_index + 2]
         )
+        if self.mask is not None:
+            val &= self.mask
+        if self.shift:
+            val >>= self.shift
+        return val
 
     def serialize(self, value: int) -> bytes:
         """Serialize to three bytes (big-endian)."""
-        return bytes([value >> 16, (value >> 8) & 0xFF, value & 0xFF])
+        val = int(value)
+        if self.shift:
+            val <<= self.shift
+        if self.mask is not None:
+            val &= self.mask
+        return bytes([(val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF])
+
+
 
 
 class Int32Field(Field[int]):

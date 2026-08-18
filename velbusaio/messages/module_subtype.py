@@ -5,9 +5,7 @@ author: Thomas Delaet <thomas@delaet.org>
 
 from __future__ import annotations
 
-import struct
-
-from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage, Field
+from velbusaio.message_fields import ByteField, DeclarativeMessage, Field, Int16Field
 
 COMMAND_CODE = 0xB0
 COMMAND_CODE_2 = 0xA7
@@ -21,10 +19,8 @@ class ModuleSubTypeMessage(DeclarativeMessage):
     _generates_data_to_binary = False
 
     module_type = ByteField(0)
-    serial = ComputedField(
-        parser=lambda data: struct.unpack(">L", bytes([0, 0, data[1], data[2]]))[0],
-        default=0,
-    )
+    serial = Int16Field(1)
+
     sub_address_1 = ByteField(3, default=0xFF)
     sub_address_2 = ByteField(4, default=0xFF)
     sub_address_3 = ByteField(5, default=0xFF)

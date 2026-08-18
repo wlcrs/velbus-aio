@@ -6,7 +6,8 @@
 from __future__ import annotations
 
 from velbusaio.message_fields import (
-    ComputedField,
+    BitField,
+    ChannelField,
     DeclarativeMessage,
     Field,
     Int16Field,
@@ -30,12 +31,19 @@ class CounterStatusMessage(DeclarativeMessage):
     _data_length = 7
     _generates_data_to_binary = False
 
-    channel = ComputedField(parser=lambda data: (data[0] & 0x03) + 1, default=0)
-    pulses = ComputedField(parser=lambda data: (data[0] >> 2) * 100, default=0)
+    channel = BitField(0, bit_range=(0, 1), offset=1)
+
+    pulse_units = BitField(0, bit_range=(2, 7))
     counter = Int32Field(1)
     delay = Int16Field(5)
     kwh = Field(default=0, serializable=False)
     watt = Field(default=0, serializable=False)
+
+    @property
+    def pulses(self) -> int:
+        """Return total pulse count per unit."""
+        return self.pulse_units * 100
+
 
     def get_channels(self):
         """:return: list"""
