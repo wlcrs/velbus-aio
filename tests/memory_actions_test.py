@@ -270,9 +270,7 @@ class TestActionTable:
     @pytest.mark.asyncio
     async def test_shared_v2_table_filters_by_channel(self):
         """Test -20 shared 7-byte table filters by subject channel."""
-        store: dict[int, int] = dict.fromkeys(
-            range(0x00E8, 0x00E8 + 144 * 7), 0xFF
-        )
+        store: dict[int, int] = dict.fromkeys(range(0x00E8, 0x00E8 + 144 * 7), 0xFF)
         # Also NO/NC addresses
         for noc in (0x0010, 0x0024):
             store[noc] = 0xFF
@@ -372,9 +370,7 @@ class TestActionTable:
         )
         assert slot.empty is False
         assert slot.to_bytes() == bytes([0x10, 0x01, 0x00, 0x05, 0xFF])
-        parsed = ActionSlot.from_bytes(
-            0, slot.to_bytes(), "blind_classic", slot_size=5
-        )
+        parsed = ActionSlot.from_bytes(0, slot.to_bytes(), "blind_classic", slot_size=5)
         assert parsed.action_key == "up"
         assert parsed.time3 == 0xFF
 

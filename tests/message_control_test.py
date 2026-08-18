@@ -44,8 +44,9 @@ class TestCoverOffMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CoverOffMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01]))
+        msg = CoverOffMessage.from_bytes(
+            bytes([0x01]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
         assert msg.priority == PRIORITY_HIGH
 
@@ -57,9 +58,10 @@ class TestCoverOffMessage:
 
     def test_needs_high_priority(self):
         """Test Needs high priority."""
-        msg = CoverOffMessage()
         with pytest.raises(ParserError):
-            msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+            CoverOffMessage.from_bytes(
+                bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+            )
 
 
 class TestCoverOffMessage2:
@@ -67,8 +69,9 @@ class TestCoverOffMessage2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CoverOffMessage2()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x02]))
+        msg = CoverOffMessage2.from_bytes(
+            bytes([0x02]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
 
     def test_data_to_binary(self):
@@ -85,8 +88,9 @@ class TestCoverUpMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CoverUpMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0, 0, 5]))
+        msg = CoverUpMessage.from_bytes(
+            bytes([0x01, 0, 0, 5]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
         assert msg.delay_time == 5
 
@@ -103,8 +107,9 @@ class TestCoverUpMessage2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CoverUpMessage2()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x02, 0, 0, 5]))
+        msg = CoverUpMessage2.from_bytes(
+            bytes([0x02, 0, 0, 5]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
         assert msg.delay_time == 5
 
@@ -121,8 +126,9 @@ class TestCoverDownMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CoverDownMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0, 0, 5]))
+        msg = CoverDownMessage.from_bytes(
+            bytes([0x01, 0, 0, 5]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
         assert msg.delay_time == 5
 
@@ -150,8 +156,9 @@ class TestCoverPosMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CoverPosMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 50]))
+        msg = CoverPosMessage.from_bytes(
+            bytes([0x01, 50]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
         assert msg.position == 50
 
@@ -168,8 +175,9 @@ class TestSwitchRelayOffMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SwitchRelayOffMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x03]))
+        msg = SwitchRelayOffMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.relay_channels == [1, 2]
 
     def test_data_to_binary(self):
@@ -200,8 +208,9 @@ class TestSwitchRelayOnMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SwitchRelayOnMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x03]))
+        msg = SwitchRelayOnMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.relay_channels == [1, 2]
 
     def test_data_to_binary(self):
@@ -232,8 +241,9 @@ class TestSetDimmerMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetDimmerMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 100, 0, 5]))
+        msg = SetDimmerMessage.from_bytes(
+            bytes([0x01, 100, 0, 5]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.dimmer_channels == [1]
         assert msg.dimmer_state == 100
         assert msg.dimmer_transitiontime == 5
@@ -252,8 +262,9 @@ class TestSetDimmerMessage2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetDimmerMessage2()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x05, 100, 5, 0]))
+        msg = SetDimmerMessage2.from_bytes(
+            bytes([0x05, 100, 5, 0]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.dimmer_channels == [5]
 
     def test_data_to_binary(self):
@@ -276,15 +287,23 @@ class TestRestoreDimmerMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = RestoreDimmerMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0x00, 0x00, 0x05]))
+        msg = RestoreDimmerMessage.from_bytes(
+            bytes([0x01, 0x00, 0x00, 0x05]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.dimmer_channels == [1]
         assert msg.dimmer_transitiontime == 5
 
     def test_data_to_binary(self):
         """Test Data to binary."""
-        msg = RestoreDimmerMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0x00, 0x00, 0x05]))
+        msg = RestoreDimmerMessage.from_bytes(
+            bytes([0x01, 0x00, 0x00, 0x05]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.data_to_binary() == bytes([0x11, 0x01, 0, 0, 5])
 
 
@@ -293,14 +312,22 @@ class TestRestoreDimmerMessage2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = RestoreDimmerMessage2()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x05, 0x00, 0x00, 0x05]))
+        msg = RestoreDimmerMessage2.from_bytes(
+            bytes([0x05, 0x00, 0x00, 0x05]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.dimmer_channels == [5]
 
     def test_data_to_binary(self):
         """Test Data to binary."""
-        msg = RestoreDimmerMessage2()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x05, 0x00, 0x00, 0x05]))
+        msg = RestoreDimmerMessage2.from_bytes(
+            bytes([0x05, 0x00, 0x00, 0x05]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.data_to_binary() == bytes([0x11, 5, 0, 0, 5])
 
 
@@ -342,8 +369,12 @@ class TestForcedOff:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ForcedOff()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0x00, 0x00, 0x05]))
+        msg = ForcedOff.from_bytes(
+            bytes([0x01, 0x00, 0x00, 0x05]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.channel == 1
         assert msg.delay_time == 5
 
@@ -364,8 +395,12 @@ class TestForcedOn:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ForcedOn()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x02, 0x00, 0x01, 0x00]))
+        msg = ForcedOn.from_bytes(
+            bytes([0x02, 0x00, 0x01, 0x00]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.channel == 2
         assert msg.delay_time == 0x0100
 
@@ -382,8 +417,12 @@ class TestInhibit:
 
     def test_populate(self):
         """Test Populate."""
-        msg = Inhibit()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0x00, 0x00, 0x05]))
+        msg = Inhibit.from_bytes(
+            bytes([0x01, 0x00, 0x00, 0x05]),
+            address=0x01,
+            priority=PRIORITY_HIGH,
+            rtr=False,
+        )
         assert msg.channel == 1
         assert msg.delay_time == 5
 
@@ -400,8 +439,9 @@ class TestCancelForcedOff:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CancelForcedOff()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x02]))
+        msg = CancelForcedOff.from_bytes(
+            bytes([0x02]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 2
 
     def test_data_to_binary(self):
@@ -436,8 +476,9 @@ class TestSetLedMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetLedMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x03]))
+        msg = SetLedMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.leds == [1, 2]
 
     def test_data_to_binary(self):
@@ -452,8 +493,9 @@ class TestClearLedMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ClearLedMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+        msg = ClearLedMessage.from_bytes(
+            bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.leds == [1]
 
     def test_data_to_binary(self):
@@ -468,8 +510,9 @@ class TestFastBlinkingLedMessage:
 
     def test_data_to_binary(self):
         """Test Data to binary."""
-        msg = FastBlinkingLedMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+        msg = FastBlinkingLedMessage.from_bytes(
+            bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.leds == [1]
         assert msg.data_to_binary() == bytes([0xF8, 0x01])
 
@@ -479,8 +522,9 @@ class TestSlowBlinkingLedMessage:
 
     def test_data_to_binary(self):
         """Test Data to binary."""
-        msg = SlowBlinkingLedMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+        msg = SlowBlinkingLedMessage.from_bytes(
+            bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.leds == [1]
         assert msg.data_to_binary() == bytes([0xF7, 0x01])
 
@@ -490,8 +534,9 @@ class TestVeryFastBlinkingLedMessage:
 
     def test_data_to_binary(self):
         """Test Data to binary."""
-        msg = VeryFastBlinkingLedMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+        msg = VeryFastBlinkingLedMessage.from_bytes(
+            bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.leds == [1]
         assert msg.data_to_binary() == bytes([0xF9, 0x01])
 
@@ -501,8 +546,9 @@ class TestUpdateLedStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = UpdateLedStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04]))
+        msg = UpdateLedStatusMessage.from_bytes(
+            bytes([0x01, 0x02, 0x04]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.led_on == [1]
         assert msg.led_slow_blinking == [2]
         assert msg.led_fast_blinking == [3]

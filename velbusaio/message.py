@@ -22,7 +22,9 @@ from velbusaio.const import (
     RTR,
     START_BYTE,
     TAIL_LENGTH,
+    MessagePriority,
 )
+
 from velbusaio.util import (
     byte_to_channels as util_byte_to_channels,
     channels_to_byte as util_channels_to_byte,
@@ -45,17 +47,24 @@ class Message:
 
     def __init__(
         self,
-        address: int | None = 0,
-        priority: int = PRIORITY_LOW,
+        address: int = 0,
+        priority: MessagePriority = MessagePriority.LOW,
         rtr: bool = False,
         data: bytes | bytearray = b"",
     ) -> None:
         """Initialize message with default values."""
-        self.priority = priority
-        self.address: int = address if address is not None else 0
+        if not isinstance(address, int) or not (0 <= address <= 255):
+            raise ValueError(
+                f"Invalid address: {address!r}. Address must be an integer between 0 and 255."
+            )
+        if not isinstance(priority, MessagePriority):
+            raise ValueError(
+                f"Invalid priority: {priority!r}. Priority must be a MessagePriority enum."
+            )
+        self.priority: MessagePriority = priority
+        self.address: int = address
         self.rtr: bool = rtr
         self._data: Any = bytes(data) if isinstance(data, (bytes, bytearray)) else data
-        self.set_defaults(address)
 
     @property
     def data(self) -> Any:
@@ -91,39 +100,22 @@ class Message:
             return bytes(data_bytes[1:])
         return None
 
-    def set_attributes(self, priority: int, address: int, rtr: bool) -> None:
-        """Set attributes of the message."""
-        self.priority = priority
-        self.address = address
-        self.rtr = rtr
-
-    def populate(self, priority: int, address: int, rtr: bool, data: bytes) -> None:
-        """Populate message from raw data."""
-        self.priority = priority
-        self.address = address
-        self.rtr = rtr
-        self._data = bytes(data) if data else b""
-
-    def set_defaults(self, address: int | None) -> None:
-        """Set defaults.
-
-        If a message has different than low priority or NO_RTR set,
-        then this method needs override in subclass
-        """
-        if address is not None:
-            self.set_address(address)
-        self.set_low_priority()
-        self.set_no_rtr()
-
-    def set_address(self, address: int) -> None:
-        """Set the address of the message."""
-        self.address = address
-
     def data_to_binary(self) -> bytes:
         """Convert message data to binary format."""
         if self._data:
             return self._data
         raise NotImplementedError
+
+    @classmethod
+    def from_bytes(
+        cls,
+        data: bytes | bytearray,
+        address: int = 0,
+        priority: MessagePriority = MessagePriority.LOW,
+        rtr: bool = False,
+    ) -> Message:
+        """Instantiate a Message from raw payload bytes."""
+        return cls(address=address, priority=priority, rtr=rtr, data=data)
 
     def to_bytes(self) -> bytes:
         """Convert the Message to framed wire bytes."""
@@ -152,34 +144,40 @@ class Message:
 
             try:
                 msg_info, remaining = _parse_raw_frame(rawmessage)
-                if msg_info is None:
-                    return None, rawmessage
-
-                priority, address, rtr, payload = msg_info
-                command_code = payload[0] if len(payload) > 0 else None
-
-                if command_code is not None and commandRegistry.has_command(
-                    command_code, module_type or 0
-                ):
-                    command_cls = commandRegistry.get_command(
-                        command_code, module_type or 0
-                    )
-                    if command_cls:
-                        msg = command_cls()
-                        msg.populate(priority, address, rtr, payload[1:])
-                        return msg, remaining
-
-                # Return generic Message if no command class registered
-                generic_msg = Message(
-                    address=address, priority=priority, rtr=rtr, data=payload
-                )
-                return generic_msg, remaining
             except ParseError:
                 logger.exception(
                     "Could not parse the message %s. Truncating invalid data.",
                     binascii.hexlify(rawmessage),
                 )
                 rawmessage = _trim_buffer_garbage(rawmessage[1:])
+                continue
+
+            if msg_info is None:
+                return None, rawmessage
+
+            priority, address, rtr, payload = msg_info
+            command_code = payload[0] if len(payload) > 0 else None
+
+            if command_code is not None and commandRegistry.has_command(
+                command_code, module_type or 0
+            ):
+                command_cls = commandRegistry.get_command(
+                    command_code, module_type or 0
+                )
+                if command_cls:
+                    msg = command_cls.from_bytes(
+                        payload[1:],
+                        address=address,
+                        priority=priority,
+                        rtr=rtr,
+                    )
+                    return msg, remaining
+
+            # Return generic Message if no command class registered
+            generic_msg = Message.from_bytes(
+                payload, address=address, priority=priority, rtr=rtr
+            )
+            return generic_msg, remaining
 
     def to_json_basic(self) -> dict[str, Any]:
         """Create JSON structure with generic attributes."""
@@ -243,45 +241,25 @@ class Message:
         if not rtr:
             self.parser_error("needs rtr set")
 
-    def set_rtr(self) -> None:
-        """Set rtr flag."""
-        self.rtr = True
-
     def needs_no_rtr(self, rtr: bool) -> None:
         """Check if rtr is not set."""
         if rtr:
             self.parser_error("does not need rtr set")
-
-    def set_no_rtr(self) -> None:
-        """Unset rtr flag."""
-        self.rtr = False
 
     def needs_low_priority(self, priority: int) -> None:
         """Check if low priority is set."""
         if priority != PRIORITY_LOW:
             self.parser_error("needs low priority set")
 
-    def set_low_priority(self) -> None:
-        """Set low priority."""
-        self.priority = PRIORITY_LOW
-
     def needs_high_priority(self, priority: int) -> None:
         """Check if high priority is set."""
         if priority != PRIORITY_HIGH:
             self.parser_error("needs high priority set")
 
-    def set_high_priority(self) -> None:
-        """Set high priority."""
-        self.priority = PRIORITY_HIGH
-
     def needs_firmware_priority(self, priority: int) -> None:
         """Check if firmware priority is set."""
         if priority != PRIORITY_FIRMWARE:
             self.parser_error("needs firmware priority set")
-
-    def set_firmware_priority(self) -> None:
-        """Set firmware priority."""
-        self.priority = PRIORITY_FIRMWARE
 
     def needs_no_data(self, data: bytes) -> None:
         """Check if no data is included."""
@@ -311,10 +289,6 @@ class Message:
             or not channels[0] <= 8
         ):
             self.parser_error("needs exactly one bit set in channel byte")
-
-
-# Alias RawMessage to Message for full backward compatibility
-RawMessage = Message
 
 
 def _parse_raw_frame(

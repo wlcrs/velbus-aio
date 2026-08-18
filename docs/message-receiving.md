@@ -26,7 +26,8 @@ flowchart TD
     I -- "else" --> M["get_module(address)"]
     M --> N{"registered in<br/>CommandRegistry?"}
     N -- no --> O[Log warning, drop]
-    N -- yes --> P["Message()<br/>msg.populate(...)"]
+    N -- yes --> P["msg = Message.from_bytes(...)"]
+
     P --> Q["await Module.on_message(msg)"]
     Q --> R["handler dispatch via<br/>_message_handlers"]
     R --> S["Channel.update /<br/>Property.update"]

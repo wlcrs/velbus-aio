@@ -91,16 +91,15 @@ async def test_module_status_selected_program(module_type):
             assert msg_info.data[1] == program
 
     # test GP4PIR lightvalue
-    msg = ModuleStatusGP4PirMessage(module_address)
     light_values = [0, 100, 1023]
     for light_value in light_values:
         databyte1 = (light_value & 0x300) >> 4
         databyte2 = light_value & 0xFF
-        msg.populate(
-            PRIORITY_LOW,
-            module_address,
-            NO_RTR,
-            [0x00, databyte1, databyte2, 0x00, 0x00, 0x00, 0x00],
+        msg = ModuleStatusGP4PirMessage.from_bytes(
+            bytes([0x00, databyte1, databyte2, 0x00, 0x00, 0x00, 0x00]),
+            address=module_address,
+            priority=PRIORITY_LOW,
+            rtr=NO_RTR,
         )
         await m.on_message(msg)
         assert m._properties["light_value"].get_state() == light_value

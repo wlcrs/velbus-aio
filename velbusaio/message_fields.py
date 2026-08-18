@@ -8,15 +8,22 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 import json
-from typing import Any, ClassVar, Generic, TypeVar, overload
+from typing import Any, ClassVar, TypeVar, overload
 
 from velbusaio.command_registry import CommandRegistryError, commandRegistry
+from velbusaio.const import (
+    PRIORITY_FIRMWARE,
+    PRIORITY_HIGH,
+    PRIORITY_LOW,
+    MessagePriority,
+)
 from velbusaio.message import Message
+
 
 T = TypeVar("T")
 
 
-class Field(Generic[T]):
+class Field[T]:
     """Base field descriptor for message attributes."""
 
     serializable: bool = True
@@ -528,36 +535,50 @@ def _collect_fields(cls: type) -> dict[str, Field]:
     return fields
 
 
-def _make_set_defaults(
-    cls: type[DeclarativeMessage],
-) -> Callable[[Any, int | None], None]:
-    """Build set_defaults honoring declarative message config."""
+def _validate_data(
+    self: DeclarativeMessage,
+    priority: MessagePriority,
+    rtr: bool,
+    data: bytes,
+) -> None:
+    """Run standard payload validations."""
+    priority_setting = self._priority
+    if priority_setting == "low" and priority != MessagePriority.LOW:
+        self.parser_error("needs low priority set")
+    elif priority_setting == "high" and priority != MessagePriority.HIGH:
+        self.parser_error("needs high priority set")
+    elif priority_setting == "firmware" and priority != MessagePriority.FIRMWARE:
+        self.parser_error("needs firmware priority set")
 
-    def set_defaults(self: DeclarativeMessage, address: int | None) -> None:
-        if address is not None:
-            self.set_address(address)
-        priority = cls._priority
-        if priority == "low":
-            self.set_low_priority()
-        elif priority == "high":
-            self.set_high_priority()
-        elif priority == "firmware":
-            self.set_firmware_priority()
-        if cls._rtr:
-            self.set_rtr()
-        else:
-            self.set_no_rtr()
+    if self._rtr and not rtr:
+        self.parser_error("needs rtr set")
+    elif not self._rtr and rtr:
+        self.parser_error("does not need rtr set")
 
-    return set_defaults
+    data_length = self._data_length
+    if data_length is not None:
+        if data_length == 0 and len(data) != 0:
+            self.parser_error("has data included")
+        elif data_length != 0 and len(data) < data_length:
+            self.parser_error(f"needs {data_length} bytes of data have {len(data)}")
 
 
 def _make_init(cls: type, fields: dict[str, Field]) -> Callable[..., None]:
     """Build __init__ that seeds field defaults and accepts positional and keyword arguments."""
 
     def __init__(
-        self: DeclarativeMessage, address: int | None = None, *args: Any, **kwargs: Any
+        self: DeclarativeMessage, address: int = 0, *args: Any, **kwargs: Any
     ) -> None:
-        Message.__init__(self)
+        p = (
+            MessagePriority.HIGH
+            if cls._priority == "high"
+            else (
+                MessagePriority.FIRMWARE
+                if cls._priority == "firmware"
+                else MessagePriority.LOW
+            )
+        )
+        Message.__init__(self, address=address, priority=p, rtr=cls._rtr)
         field_names = list(fields.keys())
         for index, arg in enumerate(args):
             if index < len(field_names):
@@ -567,71 +588,34 @@ def _make_init(cls: type, fields: dict[str, Field]) -> Callable[..., None]:
                 setattr(self, field_name, kwargs[field_name])
             elif field_name not in self.__dict__:
                 setattr(self, field_name, field.default)
-        self.set_defaults(address)
 
     return __init__
 
 
-def _validate_populate(
-    self: DeclarativeMessage, priority: int, rtr: bool, data: bytes
-) -> None:
-    """Run standard populate validations."""
-    priority_setting = self._priority
-    if priority_setting == "low":
-        self.needs_low_priority(priority)
-    elif priority_setting == "high":
-        self.needs_high_priority(priority)
-    elif priority_setting == "firmware":
-        self.needs_firmware_priority(priority)
+def _make_from_bytes(cls: type, fields: dict[str, Field]) -> Any:
+    """Build from_bytes() classmethod for declarative messages."""
 
-    if self._rtr:
-        self.needs_rtr(rtr)
-    else:
-        self.needs_no_rtr(rtr)
-
-    data_length = self._data_length
-    if data_length is not None:
-        if data_length == 0:
-            self.needs_no_data(data)
-        else:
-            self.needs_data(data, data_length)
-
-
-def _make_populate(cls: type, fields: dict[str, Field]) -> Callable[..., None]:
-    """Build populate() from declared fields."""
-
-    def populate(
-        self: DeclarativeMessage,
-        priority: int,
-        address: int,
-        rtr: bool,
-        data: bytes,
-    ) -> None:
-        _validate_populate(self, priority, rtr, data)
-        self.set_attributes(priority, address, rtr)
+    @classmethod
+    def from_bytes(
+        cls: type[DeclarativeMessage],
+        data: bytes | bytearray,
+        address: int = 0,
+        priority: MessagePriority = MessagePriority.LOW,
+        rtr: bool = False,
+    ) -> DeclarativeMessage:
+        data_bytes = bytes(data)
+        msg = cls(address=address)
+        _validate_data(msg, priority, rtr, data_bytes)
+        msg.priority = priority
+        msg.rtr = rtr
         for field_name, field in fields.items():
-            setattr(self, field_name, field.parse(data))
-        post_populate = getattr(self, "_post_populate", None)
+            setattr(msg, field_name, field.parse(data_bytes))
+        post_populate = getattr(msg, "_post_populate", None)
         if post_populate is not None:
-            post_populate(data)
+            post_populate(data_bytes)
+        return msg
 
-    return populate
-
-
-def _make_populate_no_fields(cls: type) -> Callable[..., None]:
-    """Build populate() for messages with no declared fields."""
-
-    def populate(
-        self: DeclarativeMessage,
-        priority: int,
-        address: int,
-        rtr: bool,
-        data: bytes,
-    ) -> None:
-        _validate_populate(self, priority, rtr, data)
-        self.set_attributes(priority, address, rtr)
-
-    return populate
+    return from_bytes
 
 
 def _serializable_fields(fields: dict[str, Field]) -> list[tuple[str, Field]]:
@@ -722,17 +706,11 @@ class DeclarativeMessage(Message):
             for module_type in module_types:
                 commandRegistry.register_command(cls._command_code, cls, module_type)
 
-        if "__init__" not in cls.__dict__ and fields:
+        if "__init__" not in cls.__dict__:
             cls.__init__ = _make_init(cls, fields)  # type: ignore[method-assign]
 
-        if "set_defaults" not in cls.__dict__:
-            cls.set_defaults = _make_set_defaults(cls)  # type: ignore[method-assign, assignment]
-
-        if "populate" not in cls.__dict__:
-            if fields:
-                cls.populate = _make_populate(cls, fields)  # type: ignore[method-assign]
-            else:
-                cls.populate = _make_populate_no_fields(cls)  # type: ignore[method-assign]
+        if "from_bytes" not in cls.__dict__:
+            cls.from_bytes = _make_from_bytes(cls, fields)  # type: ignore[method-assign]
 
         if (
             "data_to_binary" not in cls.__dict__

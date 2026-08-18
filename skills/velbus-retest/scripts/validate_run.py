@@ -68,9 +68,7 @@ def find_exceptions(lines: list[str], error_lines: set[str]) -> list[str]:
         if "Traceback (most recent call last)" in ln:
             continue
         if EXCEPTION_RE.search(ln) and (
-            "raise" in ln.lower()
-            or "exception" in ln.lower()
-            or "Error" in ln
+            "raise" in ln.lower() or "exception" in ln.lower() or "Error" in ln
         ):
             out.append(ln)
     return out

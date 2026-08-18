@@ -27,9 +27,11 @@ class TestModuleTypeMessage:
 
     def test_populate_with_serial(self):
         """Test Populate with serial."""
-        msg = ModuleTypeMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x20, 0x12, 0x34, 0x01, 0x18, 0x2A])
+        msg = ModuleTypeMessage.from_bytes(
+            bytes([0x20, 0x12, 0x34, 0x01, 0x18, 0x2A]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.module_type == 0x20
         assert msg.serial == 0x1234
@@ -40,8 +42,9 @@ class TestModuleTypeMessage:
 
     def test_populate_without_serial(self):
         """Test Populate without serial."""
-        msg = ModuleTypeMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x03, 0x18, 0x2A]))
+        msg = ModuleTypeMessage.from_bytes(
+            bytes([0x03, 0x18, 0x2A]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.module_type == 0x03
         assert msg.serial == 0
         assert msg.module_type_name() == "VMB1BL"
@@ -58,9 +61,11 @@ class TestModuleType2Message:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleType2Message()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x20, 0x12, 0x34, 0x01, 0x18, 0x2A, 0x01])
+        msg = ModuleType2Message.from_bytes(
+            bytes([0x20, 0x12, 0x34, 0x01, 0x18, 0x2A, 0x01]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.module_type == 0x20
         assert msg.serial == 0x1234
@@ -76,9 +81,11 @@ class TestModuleSubTypeMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleSubTypeMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x20, 0x12, 0x34, 0xF1, 0xF2, 0xF3, 0xF4])
+        msg = ModuleSubTypeMessage.from_bytes(
+            bytes([0x20, 0x12, 0x34, 0xF1, 0xF2, 0xF3, 0xF4]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.module_type == 0x20
         assert msg.serial == 0x1234
@@ -94,8 +101,12 @@ class TestSetDate:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetDate()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x0F, 0x06, 0x07, 0xE9]))
+        msg = SetDate.from_bytes(
+            bytes([0x0F, 0x06, 0x07, 0xE9]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg._day == 15
         assert msg._mon == 6
         assert msg._year == 2025
@@ -111,8 +122,9 @@ class TestSetDaylightSaving:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetDaylightSaving()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+        msg = SetDaylightSaving.from_bytes(
+            bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg._ds == 1
 
     def test_data_to_binary(self):
@@ -126,8 +138,9 @@ class TestSetRealtimeClock:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetRealtimeClock()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02, 0x0C, 0x1E]))
+        msg = SetRealtimeClock.from_bytes(
+            bytes([0x02, 0x0C, 0x1E]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg._wday == 2
         assert msg._hour == 12
         assert msg._min == 30
@@ -143,8 +156,9 @@ class TestSelectProgramMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SelectProgramMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02]))
+        msg = SelectProgramMessage.from_bytes(
+            bytes([0x02]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.select_program == 2
 
     def test_data_to_binary(self):
@@ -158,8 +172,9 @@ class TestWriteDataToMemoryMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = WriteDataToMemoryMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x03]))
+        msg = WriteDataToMemoryMessage.from_bytes(
+            bytes([0x01, 0x02, 0x03]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.high_address == 1
         assert msg.low_address == 2
         assert msg.data == 3
@@ -178,9 +193,11 @@ class TestWriteMemoryBlockMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = WriteMemoryBlockMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x0A, 0x0B, 0x0C, 0x0D])
+        msg = WriteMemoryBlockMessage.from_bytes(
+            bytes([0x01, 0x02, 0x0A, 0x0B, 0x0C, 0x0D]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.high_address == 1
         assert msg.low_address == 2
@@ -200,8 +217,9 @@ class TestMemoryDataMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = MemoryDataMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x03]))
+        msg = MemoryDataMessage.from_bytes(
+            bytes([0x01, 0x02, 0x03]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.high_address == 1
         assert msg.low_address == 2
         assert msg.data == 3
@@ -220,9 +238,11 @@ class TestMemoryDataBlockMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = MemoryDataBlockMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x0A, 0x0B, 0x0C, 0x0D])
+        msg = MemoryDataBlockMessage.from_bytes(
+            bytes([0x01, 0x02, 0x0A, 0x0B, 0x0C, 0x0D]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.high_address == 1
         assert msg.low_address == 2
@@ -242,8 +262,9 @@ class TestReadDataFromMemoryMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ReadDataFromMemoryMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x0A, 0x0B]))
+        msg = ReadDataFromMemoryMessage.from_bytes(
+            bytes([0x0A, 0x0B]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.high_address == 0x0A
         assert msg.low_address == 0x0B
 
@@ -260,8 +281,9 @@ class TestReadDataBlockFromMemoryMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ReadDataBlockFromMemoryMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x0A, 0x0B]))
+        msg = ReadDataBlockFromMemoryMessage.from_bytes(
+            bytes([0x0A, 0x0B]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.high_address == 0x0A
         assert msg.low_address == 0x0B
 

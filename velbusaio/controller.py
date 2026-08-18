@@ -36,9 +36,9 @@ from velbusaio.messages.set_date import SetDate
 from velbusaio.messages.set_daylight_saving import SetDaylightSaving
 from velbusaio.messages.set_realtime_clock import SetRealtimeClock
 from velbusaio.module import Module
-from velbusaio.properties import LightValue, SelectedProgram
+from velbusaio.message import Message
 from velbusaio.protocol import VelbusProtocol
-from velbusaio.raw_message import RawMessage
+
 from velbusaio.vlp_reader import VlpFile
 
 
@@ -191,7 +191,7 @@ class Velbus:
         """Return the cache directory."""
         return self._cache_dir
 
-    async def _on_message_received(self, msg: RawMessage) -> None:
+    async def _on_message_received(self, msg: Message) -> None:
         """On message received function."""
         await self._handler.handle(msg)
 

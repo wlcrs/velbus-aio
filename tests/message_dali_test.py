@@ -41,24 +41,30 @@ class TestDaliDeviceSettingMsg:
 
     def test_populate_unknown_subtype_keeps_bytes(self):
         """Test Populate unknown subtype keeps bytes."""
-        msg = DaliDeviceSettingMsg()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0xAB]))
+        msg = DaliDeviceSettingMsg.from_bytes(
+            bytes([0x01, 0x00, 0xAB]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.data == bytes([0xAB])
         assert msg.to_json_basic()["data"] == "ab"
 
     def test_populate_device_type(self):
         """Test Populate device type."""
-        msg = DaliDeviceSettingMsg()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x19, 0x06]))
+        msg = DaliDeviceSettingMsg.from_bytes(
+            bytes([0x01, 0x19, 0x06]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert isinstance(msg.data, DeviceTypeMsg)
         assert msg.data.device_type == DeviceType.LedModule
         assert msg.to_json_basic()["data"]["device_type"] == "LedModule"
 
     def test_populate_member_of_group(self):
         """Test Populate member of group."""
-        msg = DaliDeviceSettingMsg()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x15, 0x03, 0x00]))
+        msg = DaliDeviceSettingMsg.from_bytes(
+            bytes([0x01, 0x15, 0x03, 0x00]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert isinstance(msg.data, MemberOfGroupMsg)
         assert msg.data.member_of_groups == [0, 1]
 
@@ -102,16 +108,18 @@ class TestDaliDeviceSettingsRequest:
 
     def test_populate_without_settings(self):
         """Test Populate without settings."""
-        msg = DaliDeviceSettingsRequest()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0x00]))
+        msg = DaliDeviceSettingsRequest.from_bytes(
+            bytes([0x05, 0x00]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 5
         assert msg.data_source == DataSource.FromMemory
         assert msg.settings is None
 
     def test_populate_with_settings(self):
         """Test Populate with settings."""
-        msg = DaliDeviceSettingsRequest()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0x00, 0x19]))
+        msg = DaliDeviceSettingsRequest.from_bytes(
+            bytes([0x05, 0x00, 0x19]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.settings == 0x19
 
     def test_data_to_binary_all(self):
@@ -134,8 +142,9 @@ class TestSetEdgeColorMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetEdgeColorMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x81, 0x0F, 0x1F]))
+        msg = SetEdgeColorMessage.from_bytes(
+            bytes([0x81, 0x0F, 0x1F]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.apply_background_color is True
         assert msg.custom_color_palette is True
         assert msg.apply_to_left_edge is True
@@ -198,8 +207,13 @@ class TestEdgeSetCustomColor:
     def test_populate(self):
         """Test Populate."""
         mod = _reimport("velbusaio.messages.edge_set_custom_color")
-        msg = mod.EdgeSetCustomColor()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0x81, 0x0A, 0x0B, 0x0C]))
+        msg = mod.EdgeSetCustomColor.from_bytes(
+            bytes([0x05, 0x81, 0x0A, 0x0B, 0x0C]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
+
         assert msg.pallet == 5
         assert msg.rgb is True
         assert msg.saturation == 1

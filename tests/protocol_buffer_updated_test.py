@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from velbusaio.message import Message
 from velbusaio.protocol import VelbusProtocol
-from velbusaio.raw_message import RawMessage
 
 
 class TestVelbusProtocolBufferUpdated:
@@ -22,9 +22,9 @@ class TestVelbusProtocolBufferUpdated:
         valid_message = b"\x0f\xf8\x01\x00\x00\x00\x00\x00\x06\x04"
         protocol._buffer[: len(valid_message)] = valid_message
 
-        with patch("velbusaio.protocol.create_message_info") as mock_create:
-            mock_msg = Mock(spec=RawMessage)
-            mock_create.return_value = (mock_msg, b"")
+        with patch("velbusaio.message.Message.parse_frame") as mock_parse:
+            mock_msg = Mock(spec=Message)
+            mock_parse.return_value = (mock_msg, b"")
 
             protocol.buffer_updated(len(valid_message))
 
@@ -42,13 +42,13 @@ class TestVelbusProtocolBufferUpdated:
         partial_message = b"\x0f\xf8\x01"
         protocol._buffer[: len(partial_message)] = partial_message
 
-        with patch("velbusaio.protocol.create_message_info") as mock_create:
+        with patch("velbusaio.message.Message.parse_frame") as mock_parse:
             protocol.buffer_updated(len(partial_message))
 
             await asyncio.sleep(0.1)
 
             # Should not try to create message if too short
-            mock_create.assert_not_called()
+            mock_parse.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_buffer_updated_updates_activity_time(self):
@@ -76,9 +76,9 @@ class TestVelbusProtocolBufferUpdated:
 
         protocol._buffer[: len(combined)] = combined
 
-        with patch("velbusaio.protocol.create_message_info") as mock_create:
-            mock_msg = Mock(spec=RawMessage)
-            mock_create.return_value = (mock_msg, remaining)
+        with patch("velbusaio.message.Message.parse_frame") as mock_parse:
+            mock_msg = Mock(spec=Message)
+            mock_parse.return_value = (mock_msg, remaining)
 
             protocol.buffer_updated(len(combined))
 

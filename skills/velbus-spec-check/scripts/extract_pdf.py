@@ -50,7 +50,9 @@ def main(argv: list[str] | None = None) -> int:
         ok = 0
         for pdf in pdfs:
             try:
-                (args.out / f"{pdf.stem}.txt").write_text(extract(pdf), encoding="utf-8")
+                (args.out / f"{pdf.stem}.txt").write_text(
+                    extract(pdf), encoding="utf-8"
+                )
                 ok += 1
             except Exception as exc:  # noqa: BLE001 - keep going, report at end
                 print(f"WARN: failed to extract {pdf.name}: {exc}", file=sys.stderr)

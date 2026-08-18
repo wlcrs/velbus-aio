@@ -42,7 +42,9 @@ async def test_thermostat_operating_mode(mode, sleep_timer):
     await m.initialize(velbus.send, velbus)
     m._log = logging.getLogger("velbus-module")
     chan = m._translate_channel_name(m._data["TemperatureChannel"])
-    m._channels[chan] = Temperature(m, chan, None, False, False, velbus.send, None)
+    m._channels[chan] = Temperature(
+        m, chan, None, False, False, velbus.send, module_address
+    )
 
     msg = TempSensorStatusMessage(module_address)
     msg.status_str = DSTATUS[mode]

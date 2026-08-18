@@ -50,7 +50,7 @@ async def test_module_name(name):
     # Build memory in 4-byte blocks
     memory = {}
     for i in range(0, 16, 4):
-        memory[0xF0 + i] = memory_bytes[i:i + 4]
+        memory[0xF0 + i] = memory_bytes[i : i + 4]
 
     m = Module(module_address, module_type)
     m._use_cache = False

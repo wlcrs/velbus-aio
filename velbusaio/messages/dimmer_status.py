@@ -37,9 +37,10 @@ class DimmerStatusMessage(DeclarativeMessage):
     delay_time = Int24Field(3)
     dimmer_config = ByteField(6, serializable=False)
 
-    def __init__(self, address=None):
-        """Initialize Dimmer Status message."""
+    def __init__(self, address: int = 0):
+        """Initialize Dimmer Status Message Object."""
         super().__init__(address)
+        self.dimmer_state = 0
         self.channel = 1
 
     def _post_populate(self, data: bytes) -> None:

@@ -87,9 +87,7 @@ class TestRelay:
             assert 1 in mock_msg.relay_channels
             mock_writer.assert_called_once()
 
-    def test_get_config_parameters_gated_by_commands(
-        self, mock_module, mock_writer
-    ):
+    def test_get_config_parameters_gated_by_commands(self, mock_module, mock_writer):
         """Test force/inhibit params are only advertised when supported."""
         relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
 
@@ -97,8 +95,8 @@ class TestRelay:
             patch("velbusaio.channels.commandRegistry") as mock_registry,
             patch.object(relay, "get_action_table", return_value=None),
         ):
-            mock_registry.has_command.side_effect = (
-                lambda code, _module_type: code in {0x12, 0x14, 0x16}
+            mock_registry.has_command.side_effect = lambda code, _module_type: (
+                code in {0x12, 0x14, 0x16}
             )
             keys = {param.key for param in relay.get_config_parameters()}
             assert keys == {"name", "inhibit", "forced_on", "forced_off"}
@@ -107,8 +105,8 @@ class TestRelay:
             patch("velbusaio.channels.commandRegistry") as mock_registry,
             patch.object(relay, "get_action_table", return_value=None),
         ):
-            mock_registry.has_command.side_effect = (
-                lambda code, _module_type: code == 0x12
+            mock_registry.has_command.side_effect = lambda code, _module_type: (
+                code == 0x12
             )
             keys = {param.key for param in relay.get_config_parameters()}
             assert keys == {"name", "forced_off"}

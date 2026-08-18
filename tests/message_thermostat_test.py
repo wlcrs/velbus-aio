@@ -34,7 +34,7 @@ class TestSwitchToModeMessages:
 
     def test_populate_sets_attributes(self, cls, code):
         """Test Populate sets attributes."""
-        msg = cls()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([]))
+        msg = cls.from_bytes(bytes([]), address=0x01, priority=PRIORITY_LOW, rtr=False)
+
         assert msg.address == 0x01
         assert msg.rtr is False

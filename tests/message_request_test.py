@@ -46,8 +46,9 @@ class TestBusActiveMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = BusActiveMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([]))
+        msg = BusActiveMessage.from_bytes(
+            bytes([]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.address == 0x01
 
     def test_data_to_binary(self):
@@ -60,8 +61,9 @@ class TestBusOffMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = BusOffMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([]))
+        msg = BusOffMessage.from_bytes(
+            bytes([]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.address == 0x01
 
     def test_data_to_binary(self):
@@ -86,9 +88,10 @@ class TestInterfaceStatusRequestMessage:
 
     def test_populate_rejects_data(self):
         """Test Populate rejects data."""
-        msg = InterfaceStatusRequestMessage()
         with pytest.raises(ParserError):
-            msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+            InterfaceStatusRequestMessage.from_bytes(
+                bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+            )
 
 
 class TestMemoryDumpRequestMessage:
@@ -171,12 +174,11 @@ class TestTempSensorSettingsParts:
 
     def test_part1_roundtrip(self):
         """Test Part1 populate / data_to_binary."""
-        msg = TempSensorSettingsPart1()
-        msg.populate(
-            PRIORITY_LOW,
-            0x01,
-            False,
+        msg = TempSensorSettingsPart1.from_bytes(
             bytes([40, 42, 40, 36, 10, 4, 1]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.current_set == 20.0
         assert msg.comfort_heating == 21.0
@@ -189,12 +191,11 @@ class TestTempSensorSettingsParts:
 
     def test_part2_roundtrip(self):
         """Test Part2 populate / data_to_binary."""
-        msg = TempSensorSettingsPart2()
-        msg.populate(
-            PRIORITY_LOW,
-            0x01,
-            False,
+        msg = TempSensorSettingsPart2.from_bytes(
             bytes([44, 42, 40, 38, 0x00, 0x3C, 30]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.comfort_cooling == 22.0
         assert msg.default_sleep_timer == 60
@@ -203,42 +204,44 @@ class TestTempSensorSettingsParts:
 
     def test_part3_classic_and_gp(self):
         """Test Part3 layouts."""
-        classic = TempSensorSettingsPart3(layout="classic")
-        classic.populate(
-            PRIORITY_LOW,
-            0x01,
-            False,
+        classic = TempSensorSettingsPart3.from_bytes(
             bytes([10, 60, 16, 50, 0, 0xFF]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
+        classic.layout = "classic"
         assert classic.alarm_low == 5.0
         assert classic.alarm_high == 30.0
         assert classic.slave_or_zone == 0xFF
         assert classic.data_to_binary() == bytes([0xC6, 10, 60, 16, 50, 0, 0xFF])
 
-        gp = TempSensorSettingsPart3(layout="gp")
-        gp.populate(
-            PRIORITY_LOW,
-            0x01,
-            False,
+        gp = TempSensorSettingsPart3.from_bytes(
             bytes([10, 60, 16, 50, 0, 1, 2]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
+        gp.layout = "gp"
         assert gp.calibration_gain == 2
         assert gp.data_to_binary() == bytes([0xC6, 10, 60, 16, 50, 0, 1, 2])
 
     def test_part4_classic_and_gp(self):
         """Test Part4 layouts."""
-        classic = TempSensorSettingsPart4(layout="classic")
-        classic.populate(PRIORITY_LOW, 0x01, False, bytes([5]))
+        classic = TempSensorSettingsPart4.from_bytes(
+            bytes([5]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
+        classic.layout = "classic"
         assert classic.min_switching_time == 5
         assert classic.data_to_binary() == bytes([0xB9, 5])
 
-        gp = TempSensorSettingsPart4(layout="gp")
-        gp.populate(
-            PRIORITY_LOW,
-            0x01,
-            False,
+        gp = TempSensorSettingsPart4.from_bytes(
             bytes([5, 10, 20, 12, 14, 16, 40]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
+        gp.layout = "gp"
         assert gp.pump_delayed_on == 10
         assert gp.alarm_2 == 6.0
         assert gp.cool_upper == 20.0
@@ -250,8 +253,9 @@ class TestModuleStatusRequestMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleStatusRequestMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x03]))
+        msg = ModuleStatusRequestMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channels == [1, 2]
 
     def test_data_to_binary_list(self):
@@ -278,8 +282,9 @@ class TestModuleTypeRequestMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleTypeRequestMessage()
-        msg.populate(PRIORITY_LOW, 0x01, True, bytes([]))
+        msg = ModuleTypeRequestMessage.from_bytes(
+            bytes([]), address=0x01, priority=PRIORITY_LOW, rtr=True
+        )
         assert msg.address == 0x01
 
     def test_data_to_binary(self):
@@ -292,8 +297,9 @@ class TestChannelNameRequestMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNameRequestMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x03]))
+        msg = ChannelNameRequestMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channels == [1, 2]
 
     def test_data_to_binary_list(self):
@@ -314,8 +320,9 @@ class TestChannelNameRequestMessage2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNameRequestMessage2()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x06]))
+        msg = ChannelNameRequestMessage2.from_bytes(
+            bytes([0x06]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channels == [1, 2]
 
     def test_data_to_binary(self):
@@ -330,8 +337,9 @@ class TestChannelNameRequestMessage3:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNameRequestMessage3()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05]))
+        msg = ChannelNameRequestMessage3.from_bytes(
+            bytes([0x05]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channels == 5
 
     def test_data_to_binary(self):
@@ -346,8 +354,9 @@ class TestCounterStatusRequestMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CounterStatusRequestMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x00, 0x00]))
+        msg = CounterStatusRequestMessage.from_bytes(
+            bytes([0x00, 0x00]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.address == 0x01
 
     def test_data_to_binary(self):

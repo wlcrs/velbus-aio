@@ -26,8 +26,9 @@ class TestChannelNamePart1Message:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart1Message()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]) + b"NAME12")
+        msg = ChannelNamePart1Message.from_bytes(
+            bytes([0x01]) + b"NAME12", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.name == "NAME12"
 
@@ -44,8 +45,9 @@ class TestChannelNamePart1Message2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart1Message2()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05]) + b"ABCDEF")
+        msg = ChannelNamePart1Message2.from_bytes(
+            bytes([0x05]) + b"ABCDEF", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 5
         assert msg.name == "ABCDEF"
 
@@ -55,8 +57,9 @@ class TestChannelNamePart1Message3:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart1Message3()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02]) + b"ABCD")
+        msg = ChannelNamePart1Message3.from_bytes(
+            bytes([0x02]) + b"ABCD", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.name == "ABCD"
 
@@ -66,8 +69,9 @@ class TestChannelNamePart2Message:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart2Message()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]) + b"NAME12")
+        msg = ChannelNamePart2Message.from_bytes(
+            bytes([0x01]) + b"NAME12", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.name == "NAME12"
 
@@ -84,8 +88,9 @@ class TestChannelNamePart2Message2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart2Message2()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05]) + b"ABCDEF")
+        msg = ChannelNamePart2Message2.from_bytes(
+            bytes([0x05]) + b"ABCDEF", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 5
         assert msg.name == "ABCDEF"
 
@@ -95,8 +100,9 @@ class TestChannelNamePart2Message3:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart2Message3()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02]) + b"ABCD")
+        msg = ChannelNamePart2Message3.from_bytes(
+            bytes([0x02]) + b"ABCD", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.name == "ABCD"
 
@@ -106,8 +112,9 @@ class TestChannelNamePart3Message:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart3Message()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]) + b"ABCD")
+        msg = ChannelNamePart3Message.from_bytes(
+            bytes([0x01]) + b"ABCD", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.name == "ABCD"
 
@@ -124,8 +131,9 @@ class TestChannelNamePart3Message2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart3Message2()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05]) + b"ABCD")
+        msg = ChannelNamePart3Message2.from_bytes(
+            bytes([0x05]) + b"ABCD", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 5
         assert msg.name == "ABCD"
 
@@ -135,8 +143,9 @@ class TestChannelNamePart3Message3:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ChannelNamePart3Message3()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02]) + b"ABCD")
+        msg = ChannelNamePart3Message3.from_bytes(
+            bytes([0x02]) + b"ABCD", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 1
         assert msg.name == "ABCD"
 
@@ -146,8 +155,9 @@ class TestMemoTextMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = MemoTextMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x00, 0x03]) + b"Hi")
+        msg = MemoTextMessage.from_bytes(
+            bytes([0x00, 0x03]) + b"Hi", address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.start == 3
         assert msg.name == "Hi"
 

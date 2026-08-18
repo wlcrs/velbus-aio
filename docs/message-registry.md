@@ -3,7 +3,7 @@
 Velbus commands are identified by a single command byte, but the same byte can
 mean different things on different module types. The **command registry** maps an
 incoming `(command_byte[, module_type])` to the right `Message` subclass, and the
-**message classes** know how to parse bytes into fields (`populate`) and fields
+**message classes** know how to parse bytes into fields (`from_bytes`) and fields
 back into bytes (`data_to_binary`).
 
 ## Overview
@@ -17,7 +17,7 @@ flowchart TD
     subgraph run["Lookup (runtime, RX)"]
         H["PacketHandler.handle"] -- "has_command(cmd, module_type)" --> R
         R -- "get_command(cmd, module_type)" --> C["Message class"]
-        C --> P["msg = command()<br/>msg.populate(priority, addr, rtr, data)"]
+        C --> P["msg = command.from_bytes(data, address, priority, rtr)"]
         P --> D["module.on_message(msg)"]
     end
 ```
@@ -83,8 +83,7 @@ There are two registration mechanisms; both target the same `commandRegistry`.
 ### 1. The `@register` decorator (most common)
 
 ```python
-def register(command_value: int, module_types: list[str] | None = None):
-    ...
+def register(command_value: int, module_types: list[str] | None = None): ...
 ```
 
 - `@register(0xFB)` → registers as a **default** command.

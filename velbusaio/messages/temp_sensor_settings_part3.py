@@ -49,12 +49,11 @@ class TempSensorSettingsPart3(DeclarativeMessage):
     # GP only; ignored on classic modules that omit this byte.
     calibration_gain = _optional_byte(6, 0)
 
-    def __init__(self, address: int | None = None, *, layout: str = "gp") -> None:
+    def __init__(self, address: int = 0, *, layout: str = "gp") -> None:
         """Initialize with a settings layout (``classic`` or ``gp``)."""
-        Message.__init__(self)
+        Message.__init__(self, address=address)
         for field_name, field_desc in self._declarative_fields.items():
             setattr(self, field_name, field_desc.default)
-        self.set_defaults(address)
         self.layout = layout
 
     def data_to_binary(self) -> bytes:

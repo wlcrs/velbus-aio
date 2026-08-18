@@ -99,10 +99,14 @@ def main(argv: list[str] | None = None) -> int:
     here = Path(__file__).resolve().parent
     repo = args.repo.resolve() if args.repo else None
     spec_dir = (
-        (repo / "velbusaio" / "module_spec") if repo else locate(here, "velbusaio", "module_spec")
+        (repo / "velbusaio" / "module_spec")
+        if repo
+        else locate(here, "velbusaio", "module_spec")
     )
     if not spec_dir or not spec_dir.is_dir():
-        print("ERROR: could not find velbusaio/module_spec (use --repo)", file=sys.stderr)
+        print(
+            "ERROR: could not find velbusaio/module_spec (use --repo)", file=sys.stderr
+        )
         return 2
     repo_root = spec_dir.parent.parent
     if str(repo_root) not in sys.path:
@@ -163,7 +167,9 @@ def main(argv: list[str] | None = None) -> int:
             continue
         txt_path = text_dir / f"{Path(pdf_name).stem}.txt"
         if not txt_path.exists():
-            review.append(f"[{hex_id}] {mname}: extracted text missing ({txt_path.name})")
+            review.append(
+                f"[{hex_id}] {mname}: extracted text missing ({txt_path.name})"
+            )
             continue
         text = txt_path.read_text(encoding="utf-8")
         shared = pdf_users.get(pdf_name, 0) > 1

@@ -44,9 +44,11 @@ class TestBlindStatusNgMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = BlindStatusNgMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x05, 0x02, 0x00, 0x40, 0, 0])
+        msg = BlindStatusNgMessage.from_bytes(
+            bytes([0x01, 0x05, 0x02, 0x00, 0x40, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.channel == 1
         assert msg.timeout == 5
@@ -58,9 +60,17 @@ class TestBlindStatusNgMessage:
 
     def test_to_json(self):
         """Test To json."""
-        msg = BlindStatusNgMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0x01, 0x00, 0x00, 0, 0])
+        msg = BlindStatusNgMessage.from_bytes(
+            bytes([0x01, 0x00, 0x01, 0x00, 0x00, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
+        msg = BlindStatusNgMessage.from_bytes(
+            bytes([0x01, 0x00, 0x01, 0x00, 0x00, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         result = json.loads(msg.to_json())
         assert result["channel"] == 1
@@ -68,9 +78,10 @@ class TestBlindStatusNgMessage:
 
     def test_needs_data(self):
         """Test Needs data."""
-        msg = BlindStatusNgMessage()
         with pytest.raises(ParserError):
-            msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+            BlindStatusNgMessage.from_bytes(
+                bytes([0x01]), address=0x01, priority=PRIORITY_LOW, rtr=False
+            )
 
 
 class TestBlindStatusNg20Message:
@@ -78,16 +89,24 @@ class TestBlindStatusNg20Message:
 
     def test_populate(self):
         """Test Populate."""
-        msg = BlindStatusNg20Message()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x21, 50, 80, 0, 0, 0, 0]))
+        msg = BlindStatusNg20Message.from_bytes(
+            bytes([0x21, 50, 80, 0, 0, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.channel == (1, 2)
         assert msg.status == (1, 2)
         assert msg.position == (50, 80)
 
     def test_to_json(self):
         """Test To json."""
-        msg = BlindStatusNg20Message()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x21, 50, 80, 0, 0, 0, 0]))
+        msg = BlindStatusNg20Message.from_bytes(
+            bytes([0x21, 50, 80, 0, 0, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         result = json.loads(msg.to_json())
         assert result["status"] == ["up", "down"]
 
@@ -97,8 +116,12 @@ class TestBlindStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = BlindStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02, 5, 0x01, 0, 0, 0, 0]))
+        msg = BlindStatusMessage.from_bytes(
+            bytes([0x02, 5, 0x01, 0, 0, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.channel == 1
         assert msg.timeout == 5
         assert msg.status == 1
@@ -110,8 +133,12 @@ class TestModuleStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04, 0x08]))
+        msg = ModuleStatusMessage.from_bytes(
+            bytes([0x01, 0x02, 0x04, 0x08]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.closed == [1]
         assert msg.led_on == [2]
         assert msg.led_slow_blinking == [3]
@@ -132,9 +159,11 @@ class TestModuleStatusMessage2:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleStatusMessage2()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04, 0x08, 0x10, 0x01])
+        msg = ModuleStatusMessage2.from_bytes(
+            bytes([0x01, 0x02, 0x04, 0x08, 0x10, 0x01]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.closed == [1]
         assert msg.enabled == [2]
@@ -146,25 +175,33 @@ class TestModuleStatusMessage2:
 
     def test_data_to_binary(self):
         """Test Data to binary."""
-        msg = ModuleStatusMessage2()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04, 0x08, 0x10, 0x01])
+        msg = ModuleStatusMessage2.from_bytes(
+            bytes([0x01, 0x02, 0x04, 0x08, 0x10, 0x01]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
-        assert msg.data_to_binary() == bytes(
-            [0xED, 0x01, 0x02, 0x04, 0x08, 0x10, 0x01]
-        )
+        assert msg.data_to_binary() == bytes([0xED, 0x01, 0x02, 0x04, 0x08, 0x10, 0x01])
 
     def test_populate_four_byte_raises(self):
         """ModuleStatusMessage2 is strict: a 4-byte frame must raise ParserError."""
-        msg = ModuleStatusMessage2()
         with pytest.raises(ParserError):
-            msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04, 0x08]))
+            ModuleStatusMessage2.from_bytes(
+                bytes([0x01, 0x02, 0x04, 0x08]),
+                address=0x01,
+                priority=PRIORITY_LOW,
+                rtr=False,
+            )
 
     def test_populate_three_byte_raises(self):
         """ModuleStatusMessage2 is strict: a 3-byte frame must raise ParserError."""
-        msg = ModuleStatusMessage2()
         with pytest.raises(ParserError):
-            msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04]))
+            ModuleStatusMessage2.from_bytes(
+                bytes([0x01, 0x02, 0x04]),
+                address=0x01,
+                priority=PRIORITY_LOW,
+                rtr=False,
+            )
 
 
 class TestModuleStatusPirMessage:
@@ -172,9 +209,11 @@ class TestModuleStatusPirMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleStatusPirMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x03, 0x01, 0x02, 0, 0, 0x01, 0])
+        msg = ModuleStatusPirMessage.from_bytes(
+            bytes([0x03, 0x01, 0x02, 0, 0, 0x01, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.dark is True
         assert msg.light is True
@@ -194,9 +233,11 @@ class TestModuleStatusGP4PirMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = ModuleStatusGP4PirMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x03, 0x04, 0x08, 0x02, 0x0A])
+        msg = ModuleStatusGP4PirMessage.from_bytes(
+            bytes([0x01, 0x02, 0x03, 0x04, 0x08, 0x02, 0x0A]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.closed == [1]
         assert msg.enabled == [2]
@@ -216,9 +257,11 @@ class TestRelayStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = RelayStatusMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0x01, 0x00, 0, 0, 5])
+        msg = RelayStatusMessage.from_bytes(
+            bytes([0x01, 0x00, 0x01, 0x00, 0, 0, 5]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.channel == 1
         assert msg.is_normal()
@@ -251,9 +294,11 @@ class TestRelayStatusMessage2:
 
     def test_is_on_bitmask(self):
         """Test Is on bitmask."""
-        msg = RelayStatusMessage2()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0x01, 0x00, 0, 0, 0])
+        msg = RelayStatusMessage2.from_bytes(
+            bytes([0x01, 0x00, 0x01, 0x00, 0, 0, 0]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.is_on()
 
@@ -263,9 +308,11 @@ class TestRelayStatusMessage3:
 
     def test_populate(self):
         """Test Populate."""
-        msg = RelayStatusMessage3()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x05, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40])
+        msg = RelayStatusMessage3.from_bytes(
+            bytes([0x05, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.is_on(1)
         assert msg.is_on(3)
@@ -282,9 +329,11 @@ class TestDimmerStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = DimmerStatusMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x02, 0x64, 0x00, 0, 0, 0, 0x01])
+        msg = DimmerStatusMessage.from_bytes(
+            bytes([0x02, 0x64, 0x00, 0, 0, 0, 0x01]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.dimmer_mode == 0x02
         assert msg.is_dimmer()
@@ -322,9 +371,11 @@ class TestDimmerChannelStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = DimmerChannelStatusMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0x64, 0x00, 0, 0, 2])
+        msg = DimmerChannelStatusMessage.from_bytes(
+            bytes([0x01, 0x00, 0x64, 0x00, 0, 0, 2]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.channel == 1
         assert msg.is_normal()
@@ -345,8 +396,9 @@ class TestSliderStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SliderStatusMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0x50, 0x00]))
+        msg = SliderStatusMessage.from_bytes(
+            bytes([0x01, 0x50, 0x00]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.channel == 1
         assert msg.cur_slider_state() == 0x50
         assert msg.slider_long_pressed == 0
@@ -364,9 +416,11 @@ class TestTempSensorStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = TempSensorStatusMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x00, 0x00, 0x00, 0x2A, 0x28, 0x00, 0x00])
+        msg = TempSensorStatusMessage.from_bytes(
+            bytes([0x00, 0x00, 0x00, 0x2A, 0x28, 0x00, 0x00]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.status_str == "run"
         assert msg.mode_str == "safe"
@@ -376,9 +430,11 @@ class TestTempSensorStatusMessage:
 
     def test_to_json(self):
         """Test To json."""
-        msg = TempSensorStatusMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x00, 0x00, 0x01, 0x2A, 0x28, 0x00, 0x00])
+        msg = TempSensorStatusMessage.from_bytes(
+            bytes([0x00, 0x00, 0x01, 0x2A, 0x28, 0x00, 0x00]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         result = json.loads(msg.to_json())
         assert result["current_temp"] == 21.0
@@ -390,8 +446,9 @@ class TestPushButtonStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = PushButtonStatusMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0x02, 0x04]))
+        msg = PushButtonStatusMessage.from_bytes(
+            bytes([0x01, 0x02, 0x04]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.closed == [1]
         assert msg.opened == [2]
         assert msg.closed_long == [3]
@@ -416,8 +473,12 @@ class TestIRReceiverStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = IRReceiverStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x02, 0x04, 0x08]))
+        msg = IRReceiverStatusMessage.from_bytes(
+            bytes([0x01, 0x02, 0x04, 0x08]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.closed == [1]
         assert msg.led_on == [2]
 
@@ -427,8 +488,12 @@ class TestCounterStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CounterStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0, 0, 0, 100, 0, 10]))
+        msg = CounterStatusMessage.from_bytes(
+            bytes([0x05, 0, 0, 0, 100, 0, 10]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.channel == 2
         assert msg.pulses == 100
         assert msg.counter == 100
@@ -441,8 +506,12 @@ class TestCounterValueMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = CounterValueMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x10, 0x00, 0x64, 0, 0, 0, 5]))
+        msg = CounterValueMessage.from_bytes(
+            bytes([0x10, 0x00, 0x64, 0, 0, 0, 5]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.channel == 2
         assert msg.power == 100
         assert msg.energy == 5
@@ -454,8 +523,12 @@ class TestKwhStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = KwhStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0, 0, 0, 100, 0, 10]))
+        msg = KwhStatusMessage.from_bytes(
+            bytes([0x05, 0, 0, 0, 100, 0, 10]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.channel == 2
         assert msg.pulses == 100
         assert msg.counter == 100
@@ -469,8 +542,9 @@ class TestPsuLoadMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = PsuLoadMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 50, 60, 70]))
+        msg = PsuLoadMessage.from_bytes(
+            bytes([0x01, 50, 60, 70]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.mode == 1
         assert msg.load_1 == 50
         assert msg.load_2 == 60
@@ -482,9 +556,11 @@ class TestPsuValuesMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = PsuValuesMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x10, 0x00, 0x64, 0x00, 0xC8, 0x00, 0x0A])
+        msg = PsuValuesMessage.from_bytes(
+            bytes([0x10, 0x00, 0x64, 0x00, 0xC8, 0x00, 0x0A]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.channel == 1
         assert msg.watt == 0.1
@@ -497,8 +573,9 @@ class TestBusErrorCounterStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = BusErrorCounterStatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([1, 2, 3]))
+        msg = BusErrorCounterStatusMessage.from_bytes(
+            bytes([1, 2, 3]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.transmit_error_counter == 1
         assert msg.receive_error_counter == 2
         assert msg.bus_off_counter == 3
@@ -517,8 +594,9 @@ class TestDimValueStatus:
 
     def test_populate(self):
         """Test Populate."""
-        msg = DimValueStatus()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 100, 50]))
+        msg = DimValueStatus.from_bytes(
+            bytes([0x05, 100, 50]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.channel == 5
         assert msg.dim_values == [100, 50]
 

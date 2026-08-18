@@ -24,7 +24,8 @@ flowchart LR
     app[Consumer<br/>e.g. Home Assistant]
 
     bus <--> proto
-    proto -- RawMessage --> ctrl
+    proto -- Message --> ctrl
+
     ctrl --> handler
     handler -- lookup --> reg
     handler -- on_message --> mod

@@ -47,8 +47,9 @@ async def test_thermostat_output_channels_sync(module_type):
     # Turn on boost, alarm1 and alarm3.
     bitmask = 0x02 | 0x10 | 0x40
     data = bytes([0x00, 0x00, bitmask, 0x00, 0x00, 0x00, 0x00])
-    msg = TempSensorStatusMessage(module_address)
-    msg.populate(PRIORITY_LOW, module_address, NO_RTR, data)
+    msg = TempSensorStatusMessage.from_bytes(
+        data, address=module_address, priority=PRIORITY_LOW, rtr=NO_RTR
+    )
 
     await m.on_message(msg)
 

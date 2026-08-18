@@ -15,9 +15,11 @@ class TestSensorTemperatureMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SensorTemperatureMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x02, 0x00, 0x01, 0x00, 0x03, 0x00])
+        msg = SensorTemperatureMessage.from_bytes(
+            bytes([0x02, 0x00, 0x01, 0x00, 0x03, 0x00]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.getCurTemp() == 1.0
         assert msg.getMinTemp() == 0.5
@@ -25,9 +27,11 @@ class TestSensorTemperatureMessage:
 
     def test_negative_temperature(self):
         """Test Negative temperature."""
-        msg = SensorTemperatureMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x80, 0x00, 0x00, 0x00, 0x00, 0x00])
+        msg = SensorTemperatureMessage.from_bytes(
+            bytes([0x80, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.cur < 0
 
@@ -37,9 +41,11 @@ class TestMeteoRawMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = MeteoRawMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x00, 0x20, 0x00, 0x20, 0x00, 0x20])
+        msg = MeteoRawMessage.from_bytes(
+            bytes([0x00, 0x20, 0x00, 0x20, 0x00, 0x20]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.rain == 0.1
         assert msg.light == 1.0
@@ -51,8 +57,12 @@ class TestSensorRawMessage:
 
     def test_populate_millivolt(self):
         """Test Populate millivolt."""
-        msg = SensorRawMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0x00, 0x00, 0x64]))
+        msg = SensorRawMessage.from_bytes(
+            bytes([0x01, 0x00, 0x00, 0x00, 0x64]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.sensor == 1
         assert msg.mode == 0
         assert msg.value == 25.0
@@ -60,8 +70,12 @@ class TestSensorRawMessage:
 
     def test_populate_microamp(self):
         """Test Populate microamp."""
-        msg = SensorRawMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02, 0x01, 0x00, 0x00, 0x0A]))
+        msg = SensorRawMessage.from_bytes(
+            bytes([0x02, 0x01, 0x00, 0x00, 0x0A]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
+        )
         assert msg.value == 50
         assert msg.unit == "µA"
 
@@ -71,15 +85,17 @@ class TestSetTemperatureMessage:
 
     def test_populate(self):
         """Test Populate."""
-        msg = SetTemperatureMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x00, 0x0A]))
+        msg = SetTemperatureMessage.from_bytes(
+            bytes([0x00, 0x0A]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.temp_type == 0
         assert msg.temp == 5.0
 
     def test_populate_negative(self):
         """Test Populate with a negative temperature (two's complement)."""
-        msg = SetTemperatureMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x00, 0xC0]))
+        msg = SetTemperatureMessage.from_bytes(
+            bytes([0x00, 0xC0]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.temp == -32.0
 
     def test_data_to_binary(self):

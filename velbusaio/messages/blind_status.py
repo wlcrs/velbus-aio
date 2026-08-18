@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 
 from velbusaio.command_registry import register
+from velbusaio.const import PRIORITY_LOW, MessagePriority
+
 from velbusaio.message import Message
 from velbusaio.message_fields import (
     BlindChannelField,
@@ -51,26 +53,40 @@ class BlindStatusNgMessage(DeclarativeMessage):
 class BlindStatusNg20Message(BlindStatusNgMessage):
     """Blind Status NG20 message."""
 
-    def __init__(self, address=None):
+    def __init__(self, address: int = 0) -> None:
         """Initialize BlindStatusNg20Message class."""
-        Message.__init__(self)
+        Message.__init__(self, address=address)
         self.channel = (1, 2)
         self.timeout = 0
-        self.status = 0
-        self.position = None
-        self.set_defaults(address)
+        self.status = (0, 0)
+        self.position = (0, 0)
 
-    def populate(self, priority, address, rtr, data):
-        """Populate message fields."""
-        self.needs_low_priority(priority)
-        self.needs_no_rtr(rtr)
-        self.needs_data(data, 7)
-        self.set_attributes(priority, address, rtr)
-        self.channel = (1, 2)
-        channel1_status = data[0] & 0x03
-        channel2_status = (data[0] >> 4) & 0x03
-        self.status = (channel1_status, channel2_status)
-        self.position = (data[1], data[2])
+    @classmethod
+    def from_bytes(
+        cls,
+        data: bytes | bytearray,
+        address: int = 0,
+        priority: int = PRIORITY_LOW,
+        rtr: bool = False,
+    ) -> BlindStatusNg20Message:
+        """Parse BlindStatusNg20Message from raw payload bytes."""
+        data_bytes = bytes(data)
+        msg = cls(address=address)
+        msg.needs_low_priority(priority)
+        msg.needs_no_rtr(rtr)
+        msg.needs_data(data_bytes, 7)
+        msg.priority = (
+            MessagePriority(priority)
+            if isinstance(priority, int)
+            and priority in MessagePriority._value2member_map_
+            else priority
+        )  # type: ignore[assignment]
+        msg.rtr = rtr
+        channel1_status = data_bytes[0] & 0x03
+        channel2_status = (data_bytes[0] >> 4) & 0x03
+        msg.status = (channel1_status, channel2_status)
+        msg.position = (data_bytes[1], data_bytes[2])
+        return msg
 
     def to_json(self):
         """To json."""

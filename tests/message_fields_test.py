@@ -7,7 +7,9 @@ import json
 import pytest
 
 from velbusaio.const import PRIORITY_HIGH, PRIORITY_LOW
-from velbusaio.message import ParserError
+from velbusaio.message import Message, ParserError
+
+
 from velbusaio.message_fields import (
     BitField,
     ByteField,
@@ -133,23 +135,27 @@ class TestDeclarativeMessage:
     """Tests for generated DeclarativeMessage behavior."""
 
     def test_led_example_populate_and_binary(self):
-        """Test generated populate and data_to_binary."""
-        msg = _LedExampleMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x03]))
+        """Test generated from_bytes and data_to_binary."""
+        msg = _LedExampleMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.leds == [1, 2]
         assert msg.data_to_binary() == bytes([0xF6, 0x03])
 
     def test_led_example_parser_error_on_short_data(self):
         """Test ParserError when data is too short."""
-        msg = _LedExampleMessage()
         with pytest.raises(ParserError):
-            msg.populate(PRIORITY_LOW, 0x01, False, bytes([]))
+            _LedExampleMessage.from_bytes(
+                bytes([]), address=0x01, priority=PRIORITY_LOW, rtr=False
+            )
 
     def test_relay_status_example_round_trip(self):
         """Test a multi-field layout matches expected bytes."""
-        msg = _RelayStatusExampleMessage()
-        msg.populate(
-            PRIORITY_LOW, 0x01, False, bytes([0x01, 0x00, 0x01, 0x00, 0, 0, 5])
+        msg = _RelayStatusExampleMessage.from_bytes(
+            bytes([0x01, 0x00, 0x01, 0x00, 0, 0, 5]),
+            address=0x01,
+            priority=PRIORITY_LOW,
+            rtr=False,
         )
         assert msg.channel == 1
         assert msg.delay_time == 5
@@ -165,9 +171,10 @@ class TestDeclarativeMessage:
 
             relay_channels = ChannelsField(0)
 
-        msg = _HighPriorityMessage()
+        msg = _HighPriorityMessage.from_bytes(
+            bytes([0x03]), address=0x01, priority=PRIORITY_HIGH, rtr=False
+        )
         assert msg.priority == PRIORITY_HIGH
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x03]))
         assert msg.relay_channels == [1, 2]
 
     def test_custom_field_parser(self):
@@ -177,7 +184,9 @@ class TestDeclarativeMessage:
             _command_code = 0xE4
             _data_length = 1
 
-            temp_type = ComputedField(parser=lambda data: 0, default=0, serializable=True)
+            temp_type = ComputedField(
+                parser=lambda data: 0, default=0, serializable=True
+            )
             temp = Field(
                 byte_index=1,
                 default=0,
@@ -185,8 +194,9 @@ class TestDeclarativeMessage:
                 serializer=lambda value: bytes([int(value)]),
             )
 
-        msg = _TemperatureSetMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x00, 0x0A]))
+        msg = _TemperatureSetMessage.from_bytes(
+            bytes([0x00, 0x0A]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         assert msg.temp == 20
         assert msg.data_to_binary() == bytes([0xE4, 0, 20])
 
@@ -208,7 +218,37 @@ class TestDeclarativeMessage:
                 json_map={0: "run", 2: "manual"},
             )
 
-        msg = _StatusMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02]))
+        msg = _StatusMessage.from_bytes(
+            bytes([0x02]), address=0x01, priority=PRIORITY_LOW, rtr=False
+        )
         result = json.loads(msg.to_json())
         assert result["status"] == "manual"
+
+
+class TestMessageValidation:
+    """Tests for Message input validation."""
+
+    def test_invalid_address_raises_value_error(self):
+        """Address outside 0..255 or non-int must raise ValueError."""
+        with pytest.raises(
+            ValueError, match="Address must be an integer between 0 and 255"
+        ):
+            Message(address=256)
+
+        with pytest.raises(
+            ValueError, match="Address must be an integer between 0 and 255"
+        ):
+            Message(address=-1)
+
+        with pytest.raises(
+            ValueError, match="Address must be an integer between 0 and 255"
+        ):
+            Message(address="0x01")  # type: ignore[arg-type]
+
+    def test_invalid_priority_raises_value_error(self):
+        """Raw int or non-MessagePriority enum must raise ValueError."""
+        with pytest.raises(ValueError, match="Priority must be a MessagePriority enum"):
+            Message(priority=0xFB)  # type: ignore[arg-type]
+
+        with pytest.raises(ValueError, match="Priority must be a MessagePriority enum"):
+            Message(priority="high")  # type: ignore[arg-type]

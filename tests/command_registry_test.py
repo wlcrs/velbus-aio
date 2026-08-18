@@ -99,7 +99,9 @@ class TestCommandRegistryRegisterCommand:
         class TestCommand:
             pass
 
-        with pytest.raises(CommandRegistryError, match="Module name UnknownModule not known"):
+        with pytest.raises(
+            CommandRegistryError, match="Module name UnknownModule not known"
+        ):
             registry.register_command(0x01, TestCommand, "UnknownModule")
 
     def test_register_command_boundary_values(self, test_module_directory):
@@ -199,9 +201,7 @@ class TestRegisterModuleCommands:
 
     def test_register_module_commands_multiple_modules(self):
         """Test the same command class can be registered for multiple module types."""
-        registry = CommandRegistry(
-            {0x01: "Module1", 0x02: "Module2", 0x03: "Module3"}
-        )
+        registry = CommandRegistry({0x01: "Module1", 0x02: "Module2", 0x03: "Module3"})
 
         class TestCommand:
             pass
@@ -309,9 +309,7 @@ class TestRegisterDecorator:
 
     def test_register_decorator_with_multiple_modules(self, own_command_registry):
         """Test register_module_commands for multiple module types."""
-        registry = CommandRegistry(
-            {0x01: "Module1", 0x02: "Module2", 0x03: "Module3"}
-        )
+        registry = CommandRegistry({0x01: "Module1", 0x02: "Module2", 0x03: "Module3"})
 
         @register(0x40)
         class TestCommandMulti:
@@ -385,7 +383,9 @@ def test_defaults(own_command_registry):
     registry._register_override(2, testclass2, 0x01)
     registry._register_override(3, testclass3, 0x01)
 
-    with pytest.raises(CommandRegistryError, match=r"double registration in command registry"):
+    with pytest.raises(
+        CommandRegistryError, match=r"double registration in command registry"
+    ):
         registry._register_override(1, testclass2, 0x01)
 
     with pytest.raises(ValueError, match=r"Command_value should be >=0 and <=255"):

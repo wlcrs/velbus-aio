@@ -218,8 +218,12 @@ class PacketHandler:
         if isinstance(rawmsg, ModuleTypeMessage):
             tmsg = rawmsg
         else:
-            tmsg = ModuleTypeMessage()
-            tmsg.populate(rawmsg.priority, address, rawmsg.rtr, rawmsg.data_only or b"")
+            tmsg = ModuleTypeMessage.from_bytes(
+                rawmsg.data_only or b"",
+                address=address,
+                priority=rawmsg.priority,
+                rtr=rawmsg.rtr,
+            )
         self._log.debug(
             f"A '{tmsg.module_type_name()}' ({tmsg.module_type:#02x}) lives on address {address} ({address:#02x})"
         )
@@ -236,7 +240,7 @@ class PacketHandler:
         address = rawmsg.address
         rtr = rawmsg.rtr
         command_value = rawmsg.command
-        data = rawmsg.data_only
+        data = rawmsg.data_only or b""
         hex_cmd = f"{command_value:02X}"
 
         # handle module type response message
@@ -245,8 +249,9 @@ class PacketHandler:
 
         # handle module subtype response message
         elif command_value in (0xB0, 0xA7, 0xA6) and not self._scan_complete:
-            msg: ModuleSubTypeMessage = ModuleSubTypeMessage()
-            msg.populate(priority, address, rtr, data)
+            msg: ModuleSubTypeMessage = ModuleSubTypeMessage.from_bytes(
+                data, address=address, priority=priority, rtr=rtr
+            )
             if command_value == 0xB0:
                 msg.sub_address_offset = 0
             elif command_value == 0xA7:
@@ -280,8 +285,10 @@ class PacketHandler:
                     command = commandRegistry.get_command(command_value, module_type)
                     if not command:
                         return
-                    msg = command()
-                    msg.populate(priority, address, rtr, data)
+                    msg = command.from_bytes(
+                        data, address=address, priority=priority, rtr=rtr
+                    )
+
                     # restart the info completion time when info message received
                     if command_value in (
                         0xF0,

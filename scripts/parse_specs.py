@@ -56,9 +56,7 @@ _KNOWN_MEMORY_KEYS = frozenset(
     }
 )
 
-_ACTION_TABLE_REQUIRED = frozenset(
-    {"actions", "channels", "slot_count", "slot_size"}
-)
+_ACTION_TABLE_REQUIRED = frozenset({"actions", "channels", "slot_count", "slot_size"})
 
 
 def h2(n: int) -> str:
@@ -160,9 +158,7 @@ def _validate_action_table(path: Path, action_table: Any) -> list[str]:
 
     missing = _ACTION_TABLE_REQUIRED - action_table.keys()
     if missing:
-        errors.append(
-            f"{prefix} missing required keys: {', '.join(sorted(missing))}"
-        )
+        errors.append(f"{prefix} missing required keys: {', '.join(sorted(missing))}")
 
     catalog_id = action_table.get("actions")
     if catalog_id is not None:
@@ -219,9 +215,10 @@ def _validate_action_table(path: Path, action_table: Any) -> list[str]:
                 errors.append(
                     f"{prefix}.channels.{chan_key}.bank must be a hex address string"
                 )
-        if "noc_address" in chan_spec and _parse_hex_address(
-            chan_spec["noc_address"]
-        ) is None:
+        if (
+            "noc_address" in chan_spec
+            and _parse_hex_address(chan_spec["noc_address"]) is None
+        ):
             errors.append(
                 f"{prefix}.channels.{chan_key}.noc_address must be a hex address string"
             )

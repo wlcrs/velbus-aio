@@ -13,7 +13,6 @@ import backoff
 
 from velbusaio.const import MAXIMUM_MESSAGE_SIZE, MINIMUM_MESSAGE_SIZE, SLEEP_TIME
 from velbusaio.message import Message, ParserError
-from velbusaio.raw_message import create as create_message_info
 
 
 class VelbusProtocol(asyncio.BufferedProtocol):
@@ -137,15 +136,10 @@ class VelbusProtocol(asyncio.BufferedProtocol):
         _recheck = True
 
         while len(self._serial_buf) >= MINIMUM_MESSAGE_SIZE and _recheck:
-            # create_message_info() / _parse() reject buffers larger than one
-            # maximum-size packet, so only feed it the first MAXIMUM_MESSAGE_SIZE
-            # bytes. The bytes beyond that (a second packet that arrived in the
-            # same read) must be preserved as the tail, otherwise they are
-            # silently dropped on a busy bus where reads bundle multiple packets.
             head = bytearray(self._serial_buf[:MAXIMUM_MESSAGE_SIZE])
             tail = self._serial_buf[MAXIMUM_MESSAGE_SIZE:]
 
-            msg, remaining_data = create_message_info(head)
+            msg, remaining_data = Message.parse_frame(head)
 
             if msg is not None:
                 asyncio.ensure_future(self._process_message(msg))  # noqa: RUF006

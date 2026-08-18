@@ -36,10 +36,10 @@ class SensorTempRequest(DeclarativeMessage):
 
     _command_code = COMMAND_CODE
 
-    def __init__(self, address=None, autosend_interval=None):
-        """Initialize SensorTempRequest instance."""
+    def __init__(self, address: int = 0, autosend_interval: int | None = None):
+        """Initialize Sensor Temp Request Message Object."""
         super().__init__(address)
-        self.autosend_interval = autosend_interval
+        self.autosend_interval: int | None = autosend_interval
 
     def data_to_binary(self):
         """:return: bytes"""

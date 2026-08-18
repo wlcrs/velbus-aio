@@ -120,7 +120,9 @@ def channel_types(spec: dict) -> set[str]:
 
 
 def has_editable_channels(spec: dict) -> bool:
-    return any(chan.get("Editable") == "yes" for chan in spec.get("Channels", {}).values())
+    return any(
+        chan.get("Editable") == "yes" for chan in spec.get("Channels", {}).values()
+    )
 
 
 def max_editable_channel(spec: dict) -> int:
@@ -142,7 +144,9 @@ def needs_module_status(spec: dict, types: set[str]) -> bool:
     return not types.issubset(THERMOSTAT_ONLY_TYPES)
 
 
-def validate_global_commands(global_path: Path, global_ctc: dict[str, str]) -> list[str]:
+def validate_global_commands(
+    global_path: Path, global_ctc: dict[str, str]
+) -> list[str]:
     errors: list[str] = []
     missing = sorted(GLOBAL_COMMANDS - set(global_ctc))
     if missing:
@@ -158,9 +162,7 @@ def validate_global_commands(global_path: Path, global_ctc: dict[str, str]) -> l
     return errors
 
 
-def validate_module_spec(
-    path: Path, spec: dict, merged: dict[str, str]
-) -> list[str]:
+def validate_module_spec(path: Path, spec: dict, merged: dict[str, str]) -> list[str]:
     errors: list[str] = []
     module_name = spec.get("Type", path.stem)
     types = channel_types(spec)
