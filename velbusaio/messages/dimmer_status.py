@@ -79,14 +79,3 @@ class DimmerStatusMessage(DeclarativeMessage):
     def cur_dimmer_state(self):
         """:return: int"""
         return self.dimmer_state
-
-    def data_to_binary(self):
-        """:return: bytes"""
-        return bytes(
-            [
-                COMMAND_CODE,
-                self.dimmer_mode,
-                self.dimmer_state,
-                self.led_status,
-            ]
-        ) + Int24Field(3).serialize(self.delay_time)

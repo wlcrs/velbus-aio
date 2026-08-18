@@ -15,8 +15,3 @@ class ModuleTypeRequestMessage(DeclarativeMessage):
     _priority = MessagePriority.LOW
     _rtr = True
     _data_length = 0
-    _generates_data_to_binary = False
-
-    def data_to_binary(self):
-        """:return: bytes"""
-        return bytes([])

@@ -597,6 +597,8 @@ def _make_data_to_binary_no_fields(
     """Build data_to_binary() for messages with no serializable fields."""
 
     def data_to_binary(self: DeclarativeMessage) -> bytes:
+        if self._rtr:
+            return b""
         return bytes([cls._command_code])
 
     return data_to_binary
@@ -691,15 +693,14 @@ class DeclarativeMessage(Message):
         if "from_bytes" not in cls.__dict__:
             cls.from_bytes = _make_from_bytes(cls, fields)  # type: ignore[method-assign]
 
-        if (
-            "data_to_binary" not in cls.__dict__
-            and cls._generates_data_to_binary
-            and hasattr(cls, "_command_code")
-        ):
-            if _serializable_fields(fields):
-                cls.data_to_binary = _make_data_to_binary(cls, fields)  # type: ignore[method-assign, assignment]
-            else:
+        if "data_to_binary" not in cls.__dict__ and cls._generates_data_to_binary:
+            if cls._rtr:
                 cls.data_to_binary = _make_data_to_binary_no_fields(cls)  # type: ignore[method-assign, assignment]
+            elif hasattr(cls, "_command_code"):
+                if _serializable_fields(fields):
+                    cls.data_to_binary = _make_data_to_binary(cls, fields)  # type: ignore[method-assign, assignment]
+                else:
+                    cls.data_to_binary = _make_data_to_binary_no_fields(cls)  # type: ignore[method-assign, assignment]
 
         if cls._generates_to_json:
             if "to_json_basic" not in cls.__dict__:
