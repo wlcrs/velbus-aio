@@ -32,18 +32,29 @@ class CounterStatusMessage(DeclarativeMessage):
     _generates_data_to_binary = False
 
     channel = BitField(0, bit_range=(0, 1), offset=1)
-
     pulse_units = BitField(0, bit_range=(2, 7))
     counter = Int32Field(1)
     delay = Int16Field(5)
-    kwh = Field(default=0, serializable=False)
-    watt = Field(default=0, serializable=False)
 
     @property
     def pulses(self) -> int:
         """Return total pulse count per unit."""
         return self.pulse_units * 100
 
+    @property
+    def kwh(self) -> float:
+        """Return energy in kWh."""
+        if not self.pulses:
+            return 0.0
+        return float(self.counter / self.pulses)
+
+    @property
+    def watt(self) -> float:
+        """Return power in Watts."""
+        if not self.pulses or not self.delay:
+            return 0.0
+        val = float((1000 * 1000 * 3600) / (self.delay * self.pulses))
+        return val if val >= 55 else 0.0
 
     def get_channels(self):
         """:return: list"""

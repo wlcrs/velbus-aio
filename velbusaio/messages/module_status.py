@@ -69,18 +69,38 @@ class ModuleStatusGP4PirMessage(DeclarativeMessage):
 
     _command_code = COMMAND_CODE
     _data_length = 7
-    _generates_data_to_binary = False
 
-    closed = ChannelsField(0)  # data[0]
-    enabled = ChannelsField(1)  # data[1], only 4 bits
-    locked = ChannelsField(3)  # data[3]
-    light_value = ComputedField(
-        parser=lambda data: ((data[1] & 0x30) << 4) + data[2],
-        default=0,
-        serializable=False,
-    )  # data[1] and data[2]
-    programenabled = ChannelsField(4)  # data[4]
+    closed = ChannelsField(0)
+    enabled_mask = BitField(1, bit_range=(0, 3))
+    light_value_hi = BitField(1, bit_range=(4, 5))
+    light_value_lo = ByteField(2)
+    locked = ChannelsField(3)
+    programenabled = ChannelsField(4)
     selected_program = BitField(5, bit_range=(0, 1), json_map=PROGRAM_SELECTION)
-    light_value_send_interval = ByteField(6, default=0)  # data[6]
+    light_value_send_interval = ByteField(6, default=0)
+
+    @property
+    def enabled(self) -> list[int]:
+        """Return list of enabled channels (1..4)."""
+        return [offset + 1 for offset in range(4) if self.enabled_mask & (1 << offset)]
+
+    @enabled.setter
+    def enabled(self, channels: list[int]) -> None:
+        val = 0
+        for ch in channels:
+            if 1 <= ch <= 4:
+                val |= 1 << (ch - 1)
+        self.enabled_mask = val
+
+    @property
+    def light_value(self) -> int:
+        """Return 10-bit light value."""
+        return (self.light_value_hi << 8) | self.light_value_lo
+
+    @light_value.setter
+    def light_value(self, value: int) -> None:
+        self.light_value_hi = (value >> 8) & 0x03
+        self.light_value_lo = value & 0xFF
+
 
 

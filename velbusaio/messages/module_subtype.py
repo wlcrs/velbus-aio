@@ -25,7 +25,8 @@ class ModuleSubTypeMessage(DeclarativeMessage):
     sub_address_2 = ByteField(4, default=0xFF)
     sub_address_3 = ByteField(5, default=0xFF)
     sub_address_4 = ByteField(6, default=0xFF)
-    sub_address_offset = Field(default=0, serializable=False)
+    sub_address_offset: int = 0
+
 
     def module_name(self) -> str:
         """:return: str"""

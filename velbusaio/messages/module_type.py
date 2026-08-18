@@ -48,9 +48,6 @@ class ModuleTypeMessage(DeclarativeMessage):
     )
     build_year = ByteField(4)
     build_week = ByteField(5)
-    led_on = Field(default=[], serializable=False)
-    led_slow_blinking = Field(default=[], serializable=False)
-    led_fast_blinking = Field(default=[], serializable=False)
 
     def module_type_name(self) -> str:
         """:return: str"""
@@ -73,10 +70,6 @@ class ModuleType2Message(DeclarativeMessage):
     build_week = ByteField(5)
     term = ByteField(6)
 
-
-    led_on = Field(default=[], serializable=False)
-    led_slow_blinking = Field(default=[], serializable=False)
-    led_fast_blinking = Field(default=[], serializable=False)
 
     def module_name(self) -> str:
         """:return: str"""

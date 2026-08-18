@@ -266,7 +266,6 @@ class RawTailField(Field[bytes]):
             default=default,
             parser=lambda data, start=start_index: data[start:],
             serializer=bytes,
-            serializable=True,
         )
         self.start_index = start_index
 

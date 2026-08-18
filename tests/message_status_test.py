@@ -236,8 +236,9 @@ class TestModuleStatusGP4PirMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01, 0x02, 0x03, 0x04, 0x08, 0x02, 0x0A])
         msg = ModuleStatusGP4PirMessage.from_bytes(
-            bytes([0x01, 0x02, 0x03, 0x04, 0x08, 0x02, 0x0A]),
+            data,
             address=0x01,
             priority=PRIORITY_LOW,
             rtr=False,
@@ -247,12 +248,8 @@ class TestModuleStatusGP4PirMessage:
         assert msg.locked == [3]
         assert msg.selected_program == 2
         assert msg.light_value_send_interval == 0x0A
+        assert_roundtrip(msg, data)
 
-    def test_data_to_binary_not_implemented(self):
-        """Test Data to binary not implemented."""
-        msg = ModuleStatusGP4PirMessage()
-        with pytest.raises(NotImplementedError):
-            msg.data_to_binary()
 
 
 class TestRelayStatusMessage:
@@ -425,8 +422,9 @@ class TestTempSensorStatusMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x00, 0x00, 0x00, 0x2A, 0x28, 0x00, 0x00])
         msg = TempSensorStatusMessage.from_bytes(
-            bytes([0x00, 0x00, 0x00, 0x2A, 0x28, 0x00, 0x00]),
+            data,
             address=0x01,
             priority=PRIORITY_LOW,
             rtr=False,
@@ -434,9 +432,10 @@ class TestTempSensorStatusMessage:
         assert msg.status_mode == 0
         assert msg.mode == 0
         assert msg.getCurTemp() == 21.0
-
         assert msg.target_temp == 20.0
         assert msg.sleep_timer == 0
+        assert_roundtrip(msg, data)
+
 
     def test_to_json(self):
         """Test To json."""

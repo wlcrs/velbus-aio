@@ -40,9 +40,6 @@ class SetEdgeColorMessage(DeclarativeMessage):
     )
     background_blinking = BitField(2, bit=7, default=False)
 
-    apply_slow_blinking_feedback_color = Field(default=False, serializable=False)
-    apply_fast_blinking_feedback_color = Field(default=False, serializable=False)
-    apply_to_page = Field(default=None, serializable=False)
 
 
 class SetCustomColorMessage(DeclarativeMessage):
