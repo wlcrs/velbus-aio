@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0xA5
 
 
-@register(COMMAND_CODE)
 class DimValueStatus(DeclarativeMessage):
     """Dali Dim Value Status message."""
 

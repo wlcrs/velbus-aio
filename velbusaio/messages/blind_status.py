@@ -7,9 +7,7 @@ from __future__ import annotations
 
 import json
 
-from velbusaio.command_registry import register
 from velbusaio.const import PRIORITY_LOW, MessagePriority
-
 from velbusaio.message import Message
 from velbusaio.message_fields import (
     BlindChannelField,
@@ -23,7 +21,6 @@ COMMAND_CODE = 0xEC
 DSTATUS = {0: "off", 1: "up", 2: "down"}
 
 
-@register(COMMAND_CODE)
 class BlindStatusNgMessage(DeclarativeMessage):
     """Blind Status NG message."""
 
@@ -49,7 +46,6 @@ class BlindStatusNgMessage(DeclarativeMessage):
         return self.status == 0x00
 
 
-@register(COMMAND_CODE)
 class BlindStatusNg20Message(BlindStatusNgMessage):
     """Blind Status NG20 message."""
 
@@ -98,7 +94,6 @@ class BlindStatusNg20Message(BlindStatusNgMessage):
         return json.dumps(json_dict)
 
 
-@register(COMMAND_CODE)
 class BlindStatusMessage(DeclarativeMessage):
     """Blind Status message."""
 

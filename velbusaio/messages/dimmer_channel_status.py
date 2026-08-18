@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     ByteField,
     ChannelField,
@@ -26,7 +25,6 @@ LED_FAST_BLINKING = 1 << 5
 LED_VERY_FAST_BLINKING = 1 << 4
 
 
-@register(COMMAND_CODE)
 class DimmerChannelStatusMessage(DeclarativeMessage):
     """Dimmer Channel Status message."""
 

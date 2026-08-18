@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ComputedField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0xE4
@@ -22,7 +21,6 @@ def _serialize_temp(value: float) -> bytes:
     return bytes([int(round(value * 2)) & 0xFF])
 
 
-@register(COMMAND_CODE)
 class SetTemperatureMessage(DeclarativeMessage):
     """Set Temperature Message.
 

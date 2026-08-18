@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import BitField, DeclarativeMessage
 
 COMMAND_CODE = 0xB3
 
 
-@register(COMMAND_CODE)
 class SelectProgramMessage(DeclarativeMessage):
     """Select Program Message."""
 

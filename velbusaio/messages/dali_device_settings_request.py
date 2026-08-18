@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import enum
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage
 from velbusaio.messages.dali_device_settings import DaliDeviceSetting
 
@@ -21,7 +20,6 @@ class DataSource(enum.Enum):
     FromDaliDevice = 1
 
 
-@register(COMMAND_CODE)
 class DaliDeviceSettingsRequest(DeclarativeMessage):
     """Dali Device Settings Request message."""
 

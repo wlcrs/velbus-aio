@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import struct
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0xB0
@@ -15,9 +14,6 @@ COMMAND_CODE_2 = 0xA7
 COMMAND_CODE_3 = 0xA6
 
 
-@register(COMMAND_CODE)
-@register(COMMAND_CODE_2)
-@register(COMMAND_CODE_3)
 class ModuleSubTypeMessage(DeclarativeMessage):
     """Module SubType Message."""
 

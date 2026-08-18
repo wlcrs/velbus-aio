@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import DeclarativeMessage, HalfDegreeField
 
 COMMAND_CODE = 0xE8
 
 
-@register(COMMAND_CODE)
 class TempSensorSettingsPart1(DeclarativeMessage):
     """First part of temperature sensor settings (heating presets)."""
 

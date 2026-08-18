@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, DeclarativeMessage
 
 COMMAND_CODE = 0xFC
 
 
-@register(COMMAND_CODE)
 class WriteDataToMemoryMessage(DeclarativeMessage):
     """Write Data To Memory message class."""
 

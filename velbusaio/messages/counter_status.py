@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     ComputedField,
     DeclarativeMessage,
@@ -17,7 +16,6 @@ from velbusaio.message_fields import (
 COMMAND_CODE = 0xBE
 
 
-@register(COMMAND_CODE)
 class CounterStatusMessage(DeclarativeMessage):
     """Counter Status message.
 

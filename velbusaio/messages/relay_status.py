@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     ByteField,
     ChannelField,
@@ -28,7 +27,6 @@ LED_FAST_BLINKING = 1 << 5
 LED_VERY_FAST_BLINKING = 1 << 4
 
 
-@register(COMMAND_CODE)
 class RelayStatusMessage(DeclarativeMessage):
     """Relay Status Message."""
 
@@ -66,7 +64,6 @@ class RelayStatusMessage(DeclarativeMessage):
         return self.status == INTERVAL_TIMER_ON
 
 
-@register(COMMAND_CODE)
 class RelayStatusMessage2(RelayStatusMessage):
     """Relay Status Message."""
 
@@ -75,7 +72,6 @@ class RelayStatusMessage2(RelayStatusMessage):
         return (self.status >> (self.channel - 1)) & 1 != 0
 
 
-@register(COMMAND_CODE)
 class RelayStatusMessage3(DeclarativeMessage):
     """Relay Status Message."""
 

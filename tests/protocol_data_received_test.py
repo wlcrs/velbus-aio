@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from velbusaio.const import MAXIMUM_MESSAGE_SIZE
-from velbusaio.protocol import VelbusProtocol
 from velbusaio.message import Message
+from velbusaio.protocol import VelbusProtocol
 
 
 class TestVelbusProtocolDataReceived:

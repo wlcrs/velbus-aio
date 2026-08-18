@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, DeclarativeMessage, Field, StringField
 
 COMMAND_CODE = 0xAC
 
 
-@register(COMMAND_CODE)
 class MemoTextMessage(DeclarativeMessage):
     """Memo Text Message."""
 

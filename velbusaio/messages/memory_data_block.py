@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, DeclarativeMessage, RawTailField
 
 COMMAND_CODE = 0xCC
 
 
-@register(COMMAND_CODE)
 class MemoryDataBlockMessage(DeclarativeMessage):
     """Memory Data Block Message."""
 

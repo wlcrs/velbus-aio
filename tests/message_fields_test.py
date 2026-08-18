@@ -8,8 +8,6 @@ import pytest
 
 from velbusaio.const import PRIORITY_HIGH, PRIORITY_LOW
 from velbusaio.message import Message, ParserError
-
-
 from velbusaio.message_fields import (
     BitField,
     ByteField,
@@ -166,7 +164,7 @@ class TestDeclarativeMessage:
 
         class _HighPriorityMessage(DeclarativeMessage):
             _command_code = 0x02
-            _priority = "high"
+            _priority = PRIORITY_HIGH
             _data_length = 1
 
             relay_channels = ChannelsField(0)

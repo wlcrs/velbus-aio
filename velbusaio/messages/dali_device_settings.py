@@ -9,13 +9,11 @@ import dataclasses
 import enum
 from typing import Self
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, DeclarativeMessage
 
 COMMAND_CODE = 0xE8
 
 
-@register(COMMAND_CODE)
 class DaliDeviceSettingMsg(DeclarativeMessage):
     """Dali Device Setting message."""
 

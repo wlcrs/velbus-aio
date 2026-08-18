@@ -19,9 +19,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 
 # Log format is "{asctime} {levelname:<9} {message}".
 LEVEL_RE = re.compile(r"^\S+\s+(ERROR|CRITICAL)\b")

@@ -36,9 +36,7 @@ from velbusaio.messages.set_date import SetDate
 from velbusaio.messages.set_daylight_saving import SetDaylightSaving
 from velbusaio.messages.set_realtime_clock import SetRealtimeClock
 from velbusaio.module import Module
-from velbusaio.message import Message
 from velbusaio.protocol import VelbusProtocol
-
 from velbusaio.vlp_reader import VlpFile
 
 

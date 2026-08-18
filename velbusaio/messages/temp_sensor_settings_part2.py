@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     ByteField,
     DeclarativeMessage,
@@ -16,7 +15,6 @@ from velbusaio.message_fields import (
 COMMAND_CODE = 0xE9
 
 
-@register(COMMAND_CODE)
 class TempSensorSettingsPart2(DeclarativeMessage):
     """Second part of temperature sensor settings (cooling + timers)."""
 

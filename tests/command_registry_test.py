@@ -3,13 +3,13 @@ import pytest
 
 import velbusaio.command_registry
 from velbusaio.command_registry import (
-    CommandRegistryError,
     MESSAGE_CATALOG,
     MODULE_DIRECTORY,
     CommandRegistry,
+    CommandRegistryError,
     commandRegistry,
-    register,
 )
+from velbusaio.message import Message
 
 
 @pytest.fixture
@@ -283,52 +283,16 @@ class TestCommandRegistryGetCommand:
         assert registry.get_command(0x15, 0x02) is None
 
 
-class TestRegisterDecorator:
-    """Test register decorator function."""
+class TestAutoRegistration:
+    """Test Message class auto-registration in MESSAGE_CATALOG."""
 
-    def test_register_decorator_catalogs_class(self, own_command_registry):
-        """Test register decorator adds classes to MESSAGE_CATALOG."""
+    def test_subclass_auto_registers_in_catalog(self):
+        """Test that subclassing Message automatically adds to MESSAGE_CATALOG."""
 
-        @register(0x30)
-        class TestCommandCatalog:
+        class AutoRegisteredCommand(Message):
             pass
 
-        assert MESSAGE_CATALOG["TestCommandCatalog"] is TestCommandCatalog
-
-    def test_register_decorator_with_single_module(self, own_command_registry):
-        """Test register_module_commands for a single module type."""
-        registry = CommandRegistry({0x01: "TestModule"})
-
-        @register(0x35)
-        class TestCommandSingle:
-            pass
-
-        registry.register_module_commands(0x01, {"35": "TestCommandSingle"})
-        assert registry.has_command(0x35, 0x01)
-        assert registry.get_command(0x35, 0x01) is TestCommandSingle
-
-    def test_register_decorator_with_multiple_modules(self, own_command_registry):
-        """Test register_module_commands for multiple module types."""
-        registry = CommandRegistry({0x01: "Module1", 0x02: "Module2", 0x03: "Module3"})
-
-        @register(0x40)
-        class TestCommandMulti:
-            pass
-
-        for module_type in (0x01, 0x02, 0x03):
-            registry.register_module_commands(module_type, {"40": "TestCommandMulti"})
-            assert registry.has_command(0x40, module_type)
-
-    def test_register_decorator_returns_class(self, own_command_registry):
-        """Test that register decorator returns the original class."""
-
-        @register(0x45)
-        class TestCommandReturns:
-            test_attr = "test_value"
-
-        assert TestCommandReturns.test_attr == "test_value"
-        instance = TestCommandReturns()
-        assert isinstance(instance, TestCommandReturns)
+        assert MESSAGE_CATALOG["AutoRegisteredCommand"] is AutoRegisteredCommand
 
 
 class TestModuleDirectory:

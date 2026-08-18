@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
-from velbusaio.message import Message
 from velbusaio.message_fields import (
     ByteField,
     DeclarativeMessage,
@@ -30,7 +28,6 @@ def _optional_half(index: int, default: float = 0.0):
     return HalfDegreeField(index, default=default)
 
 
-@register(COMMAND_CODE)
 class TempSensorSettingsPart4(DeclarativeMessage):
     """Fourth part of temperature sensor settings.
 
@@ -52,9 +49,7 @@ class TempSensorSettingsPart4(DeclarativeMessage):
 
     def __init__(self, address: int = 0, *, layout: str = "gp") -> None:
         """Initialize with a settings layout (``classic`` or ``gp``)."""
-        Message.__init__(self, address=address)
-        for field_name, field_desc in self._declarative_fields.items():
-            setattr(self, field_name, field_desc.default)
+        super().__init__(address=address)
         self.layout = layout
 
     def data_to_binary(self) -> bytes:

@@ -11,14 +11,8 @@ import json
 from typing import Any, ClassVar, TypeVar, overload
 
 from velbusaio.command_registry import CommandRegistryError, commandRegistry
-from velbusaio.const import (
-    PRIORITY_FIRMWARE,
-    PRIORITY_HIGH,
-    PRIORITY_LOW,
-    MessagePriority,
-)
+from velbusaio.const import MessagePriority
 from velbusaio.message import Message
-
 
 T = TypeVar("T")
 
@@ -543,12 +537,15 @@ def _validate_data(
 ) -> None:
     """Run standard payload validations."""
     priority_setting = self._priority
-    if priority_setting == "low" and priority != MessagePriority.LOW:
-        self.parser_error("needs low priority set")
-    elif priority_setting == "high" and priority != MessagePriority.HIGH:
-        self.parser_error("needs high priority set")
-    elif priority_setting == "firmware" and priority != MessagePriority.FIRMWARE:
-        self.parser_error("needs firmware priority set")
+    if priority_setting is not None and priority != priority_setting:
+        if priority_setting == MessagePriority.LOW:
+            self.parser_error("needs low priority set")
+        elif priority_setting == MessagePriority.HIGH:
+            self.parser_error("needs high priority set")
+        elif priority_setting == MessagePriority.FIRMWARE:
+            self.parser_error("needs firmware priority set")
+        else:
+            self.parser_error(f"needs {priority_setting.name.lower()} priority set")
 
     if self._rtr and not rtr:
         self.parser_error("needs rtr set")
@@ -561,35 +558,6 @@ def _validate_data(
             self.parser_error("has data included")
         elif data_length != 0 and len(data) < data_length:
             self.parser_error(f"needs {data_length} bytes of data have {len(data)}")
-
-
-def _make_init(cls: type, fields: dict[str, Field]) -> Callable[..., None]:
-    """Build __init__ that seeds field defaults and accepts positional and keyword arguments."""
-
-    def __init__(
-        self: DeclarativeMessage, address: int = 0, *args: Any, **kwargs: Any
-    ) -> None:
-        p = (
-            MessagePriority.HIGH
-            if cls._priority == "high"
-            else (
-                MessagePriority.FIRMWARE
-                if cls._priority == "firmware"
-                else MessagePriority.LOW
-            )
-        )
-        Message.__init__(self, address=address, priority=p, rtr=cls._rtr)
-        field_names = list(fields.keys())
-        for index, arg in enumerate(args):
-            if index < len(field_names):
-                setattr(self, field_names[index], arg)
-        for field_name, field in fields.items():
-            if field_name in kwargs:
-                setattr(self, field_name, kwargs[field_name])
-            elif field_name not in self.__dict__:
-                setattr(self, field_name, field.default)
-
-    return __init__
 
 
 def _make_from_bytes(cls: type, fields: dict[str, Field]) -> Any:
@@ -681,7 +649,7 @@ class DeclarativeMessage(Message):
 
     _command_code: ClassVar[int]
     _module_types: ClassVar[list[str] | None] = None
-    _priority: ClassVar[str | None] = "low"
+    _priority: ClassVar[MessagePriority | None] = MessagePriority.LOW
     _rtr: ClassVar[bool] = False
     _data_length: ClassVar[int | None] = None
     _auto_register: ClassVar[bool] = False
@@ -689,6 +657,20 @@ class DeclarativeMessage(Message):
     _generates_to_json: ClassVar[bool] = True
 
     _declarative_fields: ClassVar[dict[str, Field]] = {}
+
+    def __init__(self, address: int = 0, *args: Any, **kwargs: Any) -> None:
+        """Initialize message, priority, rtr, and declarative field defaults."""
+        p = self._priority if self._priority is not None else MessagePriority.LOW
+        super().__init__(address=address, priority=p, rtr=self._rtr)
+        field_names = list(self._declarative_fields.keys())
+        for index, arg in enumerate(args):
+            if index < len(field_names):
+                setattr(self, field_names[index], arg)
+        for field_name, field in self._declarative_fields.items():
+            if field_name in kwargs:
+                setattr(self, field_name, kwargs[field_name])
+            elif field_name not in self.__dict__:
+                setattr(self, field_name, field.default)
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Configure generated methods and optional registry hooks."""
@@ -705,9 +687,6 @@ class DeclarativeMessage(Message):
                 )
             for module_type in module_types:
                 commandRegistry.register_command(cls._command_code, cls, module_type)
-
-        if "__init__" not in cls.__dict__:
-            cls.__init__ = _make_init(cls, fields)  # type: ignore[method-assign]
 
         if "from_bytes" not in cls.__dict__:
             cls.from_bytes = _make_from_bytes(cls, fields)  # type: ignore[method-assign]

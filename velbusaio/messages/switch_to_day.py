@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import DeclarativeMessage, Int16Field
 
 COMMAND_CODE = 0xDC
 
 
-@register(COMMAND_CODE)
 class SwitchToDayMessage(DeclarativeMessage):
     """Switch to day message class."""
 

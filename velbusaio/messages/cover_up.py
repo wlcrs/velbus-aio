@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
+from velbusaio.const import MessagePriority
 from velbusaio.message_fields import (
     BlindChannelField,
     ChannelField,
@@ -16,19 +16,17 @@ from velbusaio.message_fields import (
 COMMAND_CODE = 0x05
 
 
-@register(COMMAND_CODE)
 class CoverUpMessage(DeclarativeMessage):
     """Cover Up message."""
 
     _command_code = COMMAND_CODE
-    _priority = "high"
+    _priority = MessagePriority.HIGH
     _data_length = 4
 
     channel = ChannelField(0, default=0)
     delay_time = Int24Field(1)
 
 
-@register(COMMAND_CODE)
 class CoverUpMessage2(CoverUpMessage):
     """Cover Up message."""
 

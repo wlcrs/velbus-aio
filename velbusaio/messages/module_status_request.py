@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ChannelsField, DeclarativeMessage
 
 COMMAND_CODE = 0xFA
 
 
-@register(COMMAND_CODE)
 class ModuleStatusRequestMessage(DeclarativeMessage):
     """Module Status Request Message."""
 

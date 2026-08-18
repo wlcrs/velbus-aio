@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, DeclarativeMessage, Int16Field
 
 COMMAND_CODE = 0xB7
 
 
-@register(COMMAND_CODE)
 class SetDate(DeclarativeMessage):
     """Set Date Message."""
 

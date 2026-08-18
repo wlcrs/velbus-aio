@@ -47,8 +47,12 @@ from velbusaio.messages.cover_off import CoverOffMessage, CoverOffMessage2
 from velbusaio.messages.cover_position import CoverPosMessage
 from velbusaio.messages.cover_up import CoverUpMessage, CoverUpMessage2
 from velbusaio.messages.dali_device_settings import DaliDeviceSettingMsg
+from velbusaio.messages.dali_device_settings_request import DaliDeviceSettingsRequest
+from velbusaio.messages.dali_dim_value_status import DimValueStatus
 from velbusaio.messages.dimmer_channel_status import DimmerChannelStatusMessage
 from velbusaio.messages.dimmer_status import DimmerStatusMessage
+from velbusaio.messages.edge_set_color import SetCustomColorMessage, SetEdgeColorMessage
+from velbusaio.messages.edge_set_custom_color import EdgeSetCustomColor
 from velbusaio.messages.fast_blinking_led import FastBlinkingLedMessage
 from velbusaio.messages.forced_off import ForcedOff
 from velbusaio.messages.forced_on import ForcedOn
@@ -80,6 +84,7 @@ from velbusaio.messages.receive_ready import ReceiveReadyMessage
 from velbusaio.messages.relay_status import RelayStatusMessage
 from velbusaio.messages.restore_dimmer import RestoreDimmerMessage
 from velbusaio.messages.select_program import SelectProgramMessage
+from velbusaio.messages.sensor_settings_request import SensorSettingsRequestMessage
 from velbusaio.messages.sensor_temp_request import SensorTempRequest
 from velbusaio.messages.sensor_temperature import SensorTemperatureMessage
 from velbusaio.messages.set_date import SetDate
@@ -154,8 +159,11 @@ __all__ = [
     "CoverUpMessage",
     "CoverUpMessage2",
     "DaliDeviceSettingMsg",
+    "DaliDeviceSettingsRequest",
+    "DimValueStatus",
     "DimmerChannelStatusMessage",
     "DimmerStatusMessage",
+    "EdgeSetCustomColor",
     "FastBlinkingLedMessage",
     "ForcedOff",
     "ForcedOn",
@@ -188,11 +196,14 @@ __all__ = [
     "RestoreDimmerMessage",
     "SelectProgramMessage",
     "SensorRawMessage",
+    "SensorSettingsRequestMessage",
     "SensorTempRequest",
     "SensorTemperatureMessage",
+    "SetCustomColorMessage",
     "SetDate",
     "SetDaylightSaving",
     "SetDimmerMessage",
+    "SetEdgeColorMessage",
     "SetLedMessage",
     "SetRealtimeClock",
     "SetTemperatureMessage",
@@ -222,7 +233,3 @@ __all__ = [
     "WriteMemoryBlockMessage",
     "WriteModuleAddressAndSerialNumberMessage",
 ]
-
-from velbusaio.messages._loader import load_all_messages
-
-load_all_messages()

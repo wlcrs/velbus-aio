@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import DeclarativeMessage
 
 COMMAND_CODE = 0xCB
 
 
-@register(COMMAND_CODE)
 class MemoryDumpRequestMessage(DeclarativeMessage):
     """Memory Dump Request Message."""
 

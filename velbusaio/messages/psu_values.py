@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ComputedField, DeclarativeMessage
 
 COMMAND_CODE = 0xA3
 
 
-@register(COMMAND_CODE)
 class PsuValuesMessage(DeclarativeMessage):
     """PSU Values Message."""
 

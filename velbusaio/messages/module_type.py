@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import struct
 
-from velbusaio.command_registry import MODULE_DIRECTORY, register
+from velbusaio.command_registry import MODULE_DIRECTORY
 from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0xFF
@@ -34,7 +34,6 @@ def _parse_serial(data: bytes) -> int:
     return serial
 
 
-@register(COMMAND_CODE)
 class ModuleTypeMessage(DeclarativeMessage):
     """Module Type Message."""
 
@@ -58,7 +57,6 @@ class ModuleTypeMessage(DeclarativeMessage):
         return MODULE_DIRECTORY.get(self.module_type, "Unknown")
 
 
-@register(COMMAND_CODE)
 class ModuleType2Message(DeclarativeMessage):
     """Module Type Message."""
 

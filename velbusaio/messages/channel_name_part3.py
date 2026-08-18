@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     BitField,
     ByteField,
@@ -17,7 +16,6 @@ from velbusaio.message_fields import (
 COMMAND_CODE = 0xF2
 
 
-@register(COMMAND_CODE)
 class ChannelNamePart3Message(DeclarativeMessage):
     """Channel Name Part 3 message."""
 
@@ -28,7 +26,6 @@ class ChannelNamePart3Message(DeclarativeMessage):
     name = StringField(1)
 
 
-@register(COMMAND_CODE)
 class ChannelNamePart3Message2(ChannelNamePart3Message):
     """Channel Name Part 3 message (integer channel)."""
 
@@ -37,7 +34,6 @@ class ChannelNamePart3Message2(ChannelNamePart3Message):
     channel = ByteField(0)
 
 
-@register(COMMAND_CODE)
 class ChannelNamePart3Message3(ChannelNamePart3Message):
     """Channel Name Part 3 message (VMB1BL/VMB2BL)."""
 

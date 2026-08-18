@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Any
 
-from velbusaio.command_registry import commandRegistry
+from velbusaio.command_registry import MESSAGE_CATALOG, commandRegistry
 from velbusaio.const import (
     END_BYTE,
     HEADER_LENGTH,
@@ -24,7 +24,6 @@ from velbusaio.const import (
     TAIL_LENGTH,
     MessagePriority,
 )
-
 from velbusaio.util import (
     byte_to_channels as util_byte_to_channels,
     channels_to_byte as util_channels_to_byte,
@@ -44,6 +43,11 @@ class ParseError(ParserError):
 
 class Message:
     """Base Velbus message."""
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Register message classes in MESSAGE_CATALOG automatically upon import."""
+        super().__init_subclass__(**kwargs)
+        MESSAGE_CATALOG[cls.__name__] = cls
 
     def __init__(
         self,

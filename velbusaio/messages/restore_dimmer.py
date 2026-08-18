@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
+from velbusaio.const import MessagePriority
 from velbusaio.message_fields import (
     ByteField,
     ChannelIndexField,
@@ -25,7 +25,6 @@ def _serialize_transition(value: int) -> bytes:
     return value.to_bytes(2, byteorder="big", signed=False)
 
 
-@register(COMMAND_CODE)
 class RestoreDimmerMessage(DeclarativeMessage):
     """Restore Dimmer Message.
 
@@ -33,7 +32,7 @@ class RestoreDimmerMessage(DeclarativeMessage):
     """
 
     _command_code = COMMAND_CODE
-    _priority = "high"
+    _priority = MessagePriority.HIGH
     _data_length = 4
 
     dimmer_channels = ChannelsField(0)
@@ -45,7 +44,6 @@ class RestoreDimmerMessage(DeclarativeMessage):
     )
 
 
-@register(COMMAND_CODE)
 class RestoreDimmerMessage2(RestoreDimmerMessage):
     """Restore Dimmer Message.
 

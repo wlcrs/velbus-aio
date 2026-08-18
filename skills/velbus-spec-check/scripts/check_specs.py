@@ -31,9 +31,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 
 _MAX_UP_LEVELS = 6
 
@@ -112,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     try:
-        from velbusaio.command_registry import MODULE_DIRECTORY  # noqa: E402
+        from velbusaio.command_registry import MODULE_DIRECTORY
     except Exception as exc:  # noqa: BLE001
         print(f"ERROR: cannot import MODULE_DIRECTORY: {exc}", file=sys.stderr)
         return 2

@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
+from velbusaio.const import MessagePriority
 from velbusaio.message_fields import ByteField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0x16
 
 
-@register(COMMAND_CODE)
 class Inhibit(DeclarativeMessage):
     """Inhibit message."""
 
     _command_code = COMMAND_CODE
-    _priority = "high"
-
+    _priority = MessagePriority.HIGH
     channel = ByteField(0)
     delay_time = Field(
         byte_index=1,

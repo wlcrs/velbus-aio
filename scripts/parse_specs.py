@@ -36,10 +36,10 @@ if str(_REPO_ROOT) not in sys.path:
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
+from validate_command_specs import validate_all  # noqa: E402
+
 from velbusaio.command_registry import MESSAGE_CATALOG, MODULE_DIRECTORY  # noqa: E402
 import velbusaio.messages  # noqa: F401,E402 - populate MESSAGE_CATALOG
-
-from validate_command_specs import validate_all  # noqa: E402
 
 # How many directory levels to walk up from this script to try to find the repo root
 _MAX_UP_LEVELS = 6

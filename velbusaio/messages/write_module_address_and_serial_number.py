@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
+from velbusaio.const import MessagePriority
 from velbusaio.message_fields import ByteField, DeclarativeMessage, Int16Field
 
 COMMAND_CODE = 0x6A
 
 
-@register(COMMAND_CODE)
 class WriteModuleAddressAndSerialNumberMessage(DeclarativeMessage):
     """Write Module Address And Serial Number Message."""
 
     _command_code = COMMAND_CODE
-    _priority = "firmware"
+    _priority = MessagePriority.FIRMWARE
     _data_length = 6
 
     module_type = ByteField(0, default=0x00)

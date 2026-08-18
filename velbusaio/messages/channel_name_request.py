@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     ByteField,
     ChannelsField,
@@ -16,7 +15,6 @@ from velbusaio.message_fields import (
 COMMAND_CODE = 0xEF
 
 
-@register(COMMAND_CODE)
 class ChannelNameRequestMessage(DeclarativeMessage):
     """Channel Name Request message."""
 
@@ -26,7 +24,6 @@ class ChannelNameRequestMessage(DeclarativeMessage):
     channels = ChannelsField(0)
 
 
-@register(COMMAND_CODE)
 class ChannelNameRequestMessage2(ChannelNameRequestMessage):
     """Channel Name Request message (VMB2BL)."""
 
@@ -48,7 +45,6 @@ class ChannelNameRequestMessage2(ChannelNameRequestMessage):
         return bytes([COMMAND_CODE, tmp])
 
 
-@register(COMMAND_CODE)
 class ChannelNameRequestMessage3(ChannelNameRequestMessage):
     """Channel Name Request message (VMBDALI)."""
 

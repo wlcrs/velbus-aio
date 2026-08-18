@@ -162,7 +162,7 @@ class TestActionTable:
     @pytest.mark.asyncio
     async def test_load_set_and_clear(self):
         """Test Load set and clear."""
-        store: dict[int, int] = dict.fromkeys(range(0x0000, 0x00F0), 0xFF)
+        store: dict[int, int] = dict.fromkeys(range(0x00F0), 0xFF)
         writer = AsyncMock()
 
         async def respond(msg):

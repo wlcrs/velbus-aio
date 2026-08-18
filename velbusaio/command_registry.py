@@ -114,7 +114,7 @@ MODULE_DIRECTORY = {
     0x61: "VMB2BLE-20",
 }
 
-# Maps message class names to classes; populated by @register decorators at import.
+# Maps message class names to classes; populated automatically by Message.__init_subclass__ at import.
 MESSAGE_CATALOG: dict[str, type] = {}
 
 
@@ -193,13 +193,3 @@ class CommandRegistry:
 
 
 commandRegistry = CommandRegistry(MODULE_DIRECTORY)
-
-
-def register(command_value: int | None = None):
-    """Register decorator; catalogs message classes by name."""
-
-    def inner_register(command_class):
-        MESSAGE_CATALOG[command_class.__name__] = command_class
-        return command_class
-
-    return inner_register

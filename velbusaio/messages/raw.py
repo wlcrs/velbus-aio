@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.const import PRIORITY_LOW, MessagePriority
 from velbusaio.message import Message
 from velbusaio.message_fields import DeclarativeMessage
@@ -13,7 +12,6 @@ from velbusaio.message_fields import DeclarativeMessage
 COMMAND_CODE = 0xAF
 
 
-@register(COMMAND_CODE)
 class MeteoRawMessage(Message):
     """Meteo Raw Message."""
 
@@ -56,7 +54,6 @@ class MeteoRawMessage(Message):
         return msg
 
 
-@register(COMMAND_CODE)
 class SensorRawMessage(DeclarativeMessage):
     """Sensor Raw Message."""
 

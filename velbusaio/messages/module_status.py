@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     BitField,
     ByteField,
@@ -20,7 +19,6 @@ COMMAND_CODE = 0xED
 PROGRAM_SELECTION = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
 
 
-@register(COMMAND_CODE)
 class ModuleStatusMessage(DeclarativeMessage):
     """Module Status Message."""
 
@@ -33,7 +31,6 @@ class ModuleStatusMessage(DeclarativeMessage):
     led_fast_blinking = ChannelsField(3)
 
 
-@register(COMMAND_CODE)
 class ModuleStatusMessage2(DeclarativeMessage):
     """Module Status Message for specific modules."""
 
@@ -53,7 +50,6 @@ class ModuleStatusMessage2(DeclarativeMessage):
     )
 
 
-@register(COMMAND_CODE)
 class ModuleStatusPirMessage(DeclarativeMessage):
     """Module Status PIR Message."""
 
@@ -78,7 +74,6 @@ class ModuleStatusPirMessage(DeclarativeMessage):
     )
 
 
-@register(COMMAND_CODE)
 class ModuleStatusGP4PirMessage(DeclarativeMessage):
     """Module Status GP4 PIR Message."""
 

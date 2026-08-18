@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ByteField, ChannelsField, DeclarativeMessage
 
 COMMAND_CODE = 0xBD
 
 
-@register(COMMAND_CODE)
 class CounterStatusRequestMessage(DeclarativeMessage):
     """Counter Status Request message."""
 

@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import ChannelsField, DeclarativeMessage
 
 COMMAND_CODE = 0xF6
 
 
-@register(COMMAND_CODE)
 class SetLedMessage(DeclarativeMessage):
     """Set led Message."""
 

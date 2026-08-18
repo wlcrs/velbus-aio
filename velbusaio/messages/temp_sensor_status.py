@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import (
     BitField,
     ComputedField,
@@ -19,7 +18,6 @@ DSTATUS = {0: "run", 2: "manual", 4: "sleep", 6: "disable"}
 DMODE = {0: "safe", 16: "night", 32: "day", 64: "comfort"}
 
 
-@register(COMMAND_CODE)
 class TempSensorStatusMessage(DeclarativeMessage):
     """TempSensorStatus message class."""
 

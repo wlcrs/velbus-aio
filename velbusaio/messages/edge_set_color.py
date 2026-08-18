@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from enum import IntEnum
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import BitField, DeclarativeMessage, Field
 
 COMMAND_CODE = 0xD4
@@ -18,7 +17,6 @@ class CustomColorPriority(IntEnum):
     HIGH_PRIORITY = 3
 
 
-@register(COMMAND_CODE)
 class SetEdgeColorMessage(DeclarativeMessage):
     """Set Edge Color message (DLC=4 variant)."""
 

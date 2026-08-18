@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
+from velbusaio.const import MessagePriority
 from velbusaio.message_fields import ChannelsField, DeclarativeMessage
 
 COMMAND_CODE = 0x00
 
 
-@register(COMMAND_CODE)
 class PushButtonStatusMessage(DeclarativeMessage):
     """Push Button Status Message."""
 
     _command_code = COMMAND_CODE
-    _priority = "high"
+    _priority = MessagePriority.HIGH
     _data_length = 3
 
     closed = ChannelsField(0)

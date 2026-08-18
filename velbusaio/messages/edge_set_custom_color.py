@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from velbusaio.command_registry import register
 from velbusaio.message_fields import BitField, ByteField, DeclarativeMessage
 
 COMMAND_CODE = 0xD4
 
 
-@register(COMMAND_CODE)
 class EdgeSetCustomColor(DeclarativeMessage):
     """Edge Set Custom Color message."""
 
