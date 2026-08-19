@@ -38,7 +38,6 @@ from velbusaio.messages.set_realtime_clock import SetRealtimeClock
 from velbusaio.module import Module
 from velbusaio.properties import LightValue, SelectedProgram
 from velbusaio.protocol import VelbusProtocol
-from velbusaio.raw_message import RawMessage
 from velbusaio.vlp_reader import VlpFile
 
 
@@ -191,7 +190,7 @@ class Velbus:
         """Return the cache directory."""
         return self._cache_dir
 
-    async def _on_message_received(self, msg: RawMessage) -> None:
+    async def _on_message_received(self, msg: Message) -> None:
         """On message received function."""
         await self._handler.handle(msg)
 
@@ -373,14 +372,7 @@ class Velbus:
 
     async def send(self, msg: Message) -> None:
         """Send a packet."""
-        await self._protocol.send_message(
-            RawMessage(
-                priority=msg.priority,
-                address=msg.address,
-                rtr=msg.rtr,
-                data=msg.data_to_binary(),
-            )
-        )
+        await self._protocol.send_message(msg)
 
     def get_all_sensor(
         self,

@@ -5,19 +5,57 @@ Author: Maikel Punie <maikel.punie@gmail.com>
 
 from __future__ import annotations
 
+from enum import IntEnum, StrEnum
 from typing import Final
 
-PRIORITY_HIGH: Final = 0xF8
-PRIORITY_FIRMWARE: Final = 0xF9
-PRIORITY_LOW: Final = 0xFB
-PRIORITY_THIRDPARTY: Final = 0xFA
-PRIORITY_WEIRD: Final = 0xFC
+
+class BlindState(IntEnum):
+    """Blind movement state."""
+
+    STOPPED = 0x00
+    OPENING = 0x01
+    CLOSING = 0x02
+
+
+class ButtonLedState(StrEnum):
+    """Button LED state with associated command code."""
+
+    command_code: int
+
+    def __new__(cls, value: str, command_code: int) -> ButtonLedState:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.command_code = command_code
+        return obj
+
+    OFF = ("off", 0xF5)
+    ON = ("on", 0xF6)
+    SLOW = ("slow", 0xF7)
+    FAST = ("fast", 0xF8)
+
+
+class MessagePriority(IntEnum):
+    """Velbus message priorities."""
+
+    HIGH = 0xF8
+    FIRMWARE = 0xF9
+    THIRDPARTY = 0xFA
+    LOW = 0xFB
+    WEIRD = 0xFC
+
+
+PRIORITY_HIGH: Final = MessagePriority.HIGH
+PRIORITY_FIRMWARE: Final = MessagePriority.FIRMWARE
+PRIORITY_LOW: Final = MessagePriority.LOW
+PRIORITY_THIRDPARTY: Final = MessagePriority.THIRDPARTY
+PRIORITY_WEIRD: Final = MessagePriority.WEIRD
+
 PRIORITIES: Final = [
-    PRIORITY_FIRMWARE,
-    PRIORITY_HIGH,
-    PRIORITY_LOW,
-    PRIORITY_THIRDPARTY,
-    PRIORITY_WEIRD,
+    MessagePriority.FIRMWARE,
+    MessagePriority.HIGH,
+    MessagePriority.LOW,
+    MessagePriority.THIRDPARTY,
+    MessagePriority.WEIRD,
 ]
 
 

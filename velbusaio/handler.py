@@ -23,7 +23,7 @@ from velbusaio.const import (
 )
 from velbusaio.messages.module_subtype import ModuleSubTypeMessage
 from velbusaio.messages.module_type import ModuleType2Message, ModuleTypeMessage
-from velbusaio.raw_message import RawMessage
+from velbusaio.message import Message
 
 if TYPE_CHECKING:
     from velbusaio.controller import Velbus
@@ -205,7 +205,7 @@ class PacketHandler:
             total_time = time.perf_counter() - start_time
             self._log.info(f"Module scan completed in {total_time:.2f} seconds")
 
-    async def __handle_module_type_response_async(self, rawmsg: RawMessage) -> None:
+    async def __handle_module_type_response_async(self, rawmsg: Message) -> None:
         """Handle a received module type response packet."""
         address = rawmsg.address
 
@@ -222,7 +222,7 @@ class PacketHandler:
         )
         self.__scan_found_addresses[address] = tmsg
 
-    async def handle(self, rawmsg: RawMessage) -> None:
+    async def handle(self, rawmsg: Message) -> None:
         """Handle a received packet."""
         if rawmsg.address < 1 or rawmsg.address > 254:
             return

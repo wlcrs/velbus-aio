@@ -4,9 +4,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from velbusaio.message import ParserError
+from velbusaio.message import Message, ParserError
 from velbusaio.protocol import VelbusProtocol
-from velbusaio.raw_message import RawMessage
 
 
 class TestVelbusProtocolMessageProcessing:
@@ -18,7 +17,7 @@ class TestVelbusProtocolMessageProcessing:
         callback = AsyncMock()
         protocol = VelbusProtocol(callback)
 
-        mock_message = Mock(spec=RawMessage)
+        mock_message = Mock(spec=Message)
 
         await protocol._process_message(mock_message)
 
@@ -30,7 +29,7 @@ class TestVelbusProtocolMessageProcessing:
         callback = AsyncMock(side_effect=Exception("Test error"))
         protocol = VelbusProtocol(callback)
 
-        mock_message = Mock(spec=RawMessage)
+        mock_message = Mock(spec=Message)
 
         # Should not raise exception
         with pytest.raises(Exception):
@@ -49,7 +48,7 @@ class TestVelbusProtocolMessageProcessing:
         )
         protocol = VelbusProtocol(callback)
 
-        mock_message = Mock(spec=RawMessage)
+        mock_message = Mock(spec=Message)
 
         # Should not raise
         await protocol._process_message(mock_message)
