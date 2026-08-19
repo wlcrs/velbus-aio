@@ -25,6 +25,7 @@ def mock_controller(mock_writer):
     """Create a mock controller for testing."""
     controller = Mock()
     controller.send = mock_writer
+    controller.cache_dir = None
     controller.get_cache_dir.return_value = None
     controller._on_modules_loaded = AsyncMock()
     return controller
@@ -34,14 +35,15 @@ def mock_controller(mock_writer):
 def mock_module(mock_writer, mock_controller):
     """Create a mock module for testing."""
     module = Mock()
+    module.controller = mock_controller
     module._controller = mock_controller
-    module.get_address.return_value = 0x01
-    module.get_type.return_value = 0x01
-    module.get_type_name.return_value = "TestModule"
-    module.get_serial.return_value = "12345"
-    module.get_addresses.return_value = [0x01, 0x02, 0x03, 0x04]
-    module.get_sw_version.return_value = "1.0.0"
-    module.get_name.return_value = "Test Module Name"
+    module.address = 0x01
+    module.type = 0x01
+    module.type_name = "TestModule"
+    module.serial = "12345"
+    module.addresses = [0x01, 0x02, 0x03, 0x04]
+    module.sw_version = "1.0.0"
+    module.name = "Test Module Name"
     module.calc_channel_offset.return_value = 0
     module.has_command = Mock(return_value=True)
     module.create_message.side_effect = (

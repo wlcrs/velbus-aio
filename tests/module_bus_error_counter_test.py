@@ -35,9 +35,9 @@ async def test_bus_error_counters_are_updated():
 
     await m.on_message(msg)
 
-    assert m._properties["bus_error_tx"].value == TRANSMIT_ERRORS
-    assert m._properties["bus_error_rx"].value == RECEIVE_ERRORS
-    assert m._properties["bus_error_off"].value == BUS_OFF_COUNT
-    assert m._properties["bus_error_tx"].get_state() == TRANSMIT_ERRORS
-    assert m._properties["bus_error_rx"].get_state() == RECEIVE_ERRORS
-    assert m._properties["bus_error_off"].get_state() == BUS_OFF_COUNT
+    assert m.properties["bus_error_tx"].value == TRANSMIT_ERRORS
+    assert m.properties["bus_error_rx"].value == RECEIVE_ERRORS
+    assert m.properties["bus_error_off"].value == BUS_OFF_COUNT
+    assert m.properties["bus_error_tx"].value == TRANSMIT_ERRORS
+    assert m.properties["bus_error_rx"].value == RECEIVE_ERRORS
+    assert m.properties["bus_error_off"].value == BUS_OFF_COUNT

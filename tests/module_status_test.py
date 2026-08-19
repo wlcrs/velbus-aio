@@ -57,9 +57,9 @@ async def test_module_status_selected_program(module_type):
 
     # load the module with dummy channels
     for chan in range(1, 9):
-        m._channels[chan] = Channel(None, None, None, False, False, None)
-    m._properties["light_value"] = LightValue(m, "Light")
-    m._properties["selected_program"] = SelectedProgram(m, "program")
+        m.channels[chan] = Channel(None, None, None, False, False, None)
+    m.properties["light_value"] = LightValue(m, "Light")
+    m.properties["selected_program"] = SelectedProgram(m, "program")
 
     messages_to_test = [
         ModuleStatusMessage2,
@@ -76,12 +76,12 @@ async def test_module_status_selected_program(module_type):
             msg.selected_program = program
             await m.on_message(msg)
             assert (
-                m._properties["selected_program"].get_selected_program()
+                m.properties["selected_program"].value
                 == PROGRAM_SELECTION[program]
             )
 
             # Send the select_program message and check if the binary data is ok
-            await m._properties["selected_program"].set_selected_program(
+            await m.properties["selected_program"].set(
                 PROGRAM_SELECTION[program]
             )
             msg_info = await velbus._protocol._send_queue.get()
@@ -99,4 +99,4 @@ async def test_module_status_selected_program(module_type):
             rtr=NO_RTR,
         )
         await m.on_message(msg)
-        assert m._properties["light_value"].get_state() == light_value
+        assert m.properties["light_value"].value == light_value

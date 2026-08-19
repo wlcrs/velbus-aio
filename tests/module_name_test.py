@@ -14,8 +14,8 @@ class MockWriter:
 class MockController:
     """Mock controller for testing."""
 
-    def connected(self):
-        return True
+    connected = True
+    cache_dir = None
 
     def get_cache_dir(self):
         return None
@@ -69,4 +69,4 @@ async def test_module_name(name):
         msg.data = data
         await m._process_memory_data_block_message(msg)
 
-    assert m.get_name() == name
+    assert m.name == name

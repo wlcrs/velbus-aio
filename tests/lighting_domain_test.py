@@ -19,7 +19,7 @@ async def test_lighting_domain_relay(mock_controller):
     module = Module(1, 0x08, controller=mock_controller)
 
     relay = Relay(module, 1, "Relay 1", False, True, 1)
-    module._channels[1] = relay
+    module.channels[1] = relay
 
     msg = RelayStatusMessage(1)
     msg.channel = 1
@@ -36,7 +36,7 @@ async def test_lighting_domain_relay3(mock_controller):
     module = Module(1, 0x08, controller=mock_controller)
 
     for i in range(1, 5):
-        module._channels[i] = Relay(module, i, f"Relay {i}", False, True, 1)
+        module.channels[i] = Relay(module, i, f"Relay {i}", False, True, 1)
 
     msg = RelayStatusMessage3(1)
     msg.status_bits = 0b00000101  # channels 1 and 3 ON
@@ -47,10 +47,10 @@ async def test_lighting_domain_relay3(mock_controller):
 
     await module.on_message(msg)
 
-    assert module._channels[1].is_on() is True
-    assert module._channels[2].is_on() is False
-    assert module._channels[3].is_on() is True
-    assert module._channels[4].is_on() is False
+    assert module.channels[1].is_on() is True
+    assert module.channels[2].is_on() is False
+    assert module.channels[3].is_on() is True
+    assert module.channels[4].is_on() is False
 
 
 @pytest.mark.asyncio
@@ -60,8 +60,8 @@ async def test_lighting_domain_dimmer_and_dali(mock_controller):
 
     dimmer1 = Dimmer(module, 1, "Dimmer 1", False, True, 1)
     dimmer2 = Dimmer(module, 2, "Dimmer 2", False, True, 1)
-    module._channels[1] = dimmer1
-    module._channels[2] = dimmer2
+    module.channels[1] = dimmer1
+    module.channels[2] = dimmer2
 
     msg = DimmerStatusMessage(1)
     msg.channel = 1

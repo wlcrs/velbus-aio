@@ -17,24 +17,17 @@ class TestSelectedProgram:
         prog = SelectedProgram(mock_module, "Program")
         assert prog.get_categories() == ["select"]
 
-    def test_get_class(self, mock_module, mock_writer):
-        """Test getting selected program class."""
-        prog = SelectedProgram(mock_module, "Program")
-        assert prog.get_class() is None
-
-    def test_get_options(self, mock_module, mock_writer):
+    def test_options(self, mock_module, mock_writer):
         """Test getting available program options."""
         prog = SelectedProgram(mock_module, "Program")
-        assert prog.get_options() == list(PROGRAM_SELECTION.values())
+        assert prog.options == list(PROGRAM_SELECTION.values())
 
     @pytest.mark.asyncio
-    async def test_get_selected_program(self, mock_module, mock_writer):
-        """Test getting selected program."""
+    async def test_selected_program_value(self, mock_module, mock_writer):
+        """Test getting selected program value."""
         prog = SelectedProgram(mock_module, "Program")
         await prog.update_value("Program 1")
         assert prog.value == "Program 1"
-        assert prog.get_selected_program() == "Program 1"
-        assert prog.get_state() == "Program 1"
 
     @pytest.mark.asyncio
     async def test_set_selected_program(self, mock_module, mock_writer):

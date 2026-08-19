@@ -66,6 +66,6 @@ async def test_thermostat_output_channels_sync(module_type):
         ALARM4: False,
     }
     for channel_num, is_closed in expected.items():
-        assert m._channels[channel_num].is_closed() is is_closed, (
+        assert m.channels[channel_num].is_closed() is is_closed, (
             f"channel {channel_num} closed state out of sync"
         )

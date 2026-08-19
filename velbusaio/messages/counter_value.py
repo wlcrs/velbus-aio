@@ -37,7 +37,3 @@ class CounterValueMessage(DeclarativeMessage):
     channel = BitField(0, bit_range=(4, 7), offset=1)
     power = Int24Field(0, bit_range=(0, 19))
     energy = Int32Field(3)
-
-    def get_channels(self):
-        """:return: list"""
-        return self.channel

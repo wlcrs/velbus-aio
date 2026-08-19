@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 import datetime
+import inspect
 import itertools
 import logging
 import re
@@ -38,6 +39,7 @@ from velbusaio.messages.set_daylight_saving import SetDaylightSaving
 from velbusaio.messages.set_realtime_clock import SetRealtimeClock
 from velbusaio.module import Module
 from velbusaio.protocol import VelbusProtocol
+from velbusaio.scanner import VelbusScanner
 from velbusaio.vlp_reader import VlpFile, create_module_from_vlp
 
 
@@ -98,20 +100,24 @@ class Velbus:
         self._auto_reconnect = True
 
         self._destination = dsn
-        self._handler = PacketHandler(self, one_address)
-        self._modules: dict[int, Module] = {}
+        self._one_address = one_address
+        self._handler = PacketHandler(self)
+        self.modules: dict[int, Module] = {}
         self._submodules: list[int] = []
         self._send_queue: asyncio.Queue = asyncio.Queue()
         self._vlp_file = vlp_file
-        self._cache_dir: str = cache_dir
+        self.cache_dir: str = cache_dir
         self._is_connected: bool = False
+        self._message_listeners: list[
+            Callable[[Message], Awaitable[None] | None]
+        ] = []
         self._on_connect_callbacks: list[t.Callable[[], Awaitable[None]]] = []
         self._on_disconnect_callbacks: list[t.Callable[[], Awaitable[None]]] = []
         self._on_module_found_callbacks: list[
             t.Callable[[Module], Awaitable[None]]
         ] = []
         self._background_tasks: set[asyncio.Task] = set()
-        self._scheduled_tasks: dict[str, ScheduledTask] = {}
+        self.scheduled_tasks: dict[str, ScheduledTask] = {}
         self._scheduler_log = logging.getLogger("velbus-scheduler")
 
     def add_connect_callback(self, meth: t.Callable[[], Awaitable[None]]) -> None:
@@ -147,11 +153,11 @@ class Velbus:
 
     async def save_module_cache(self, module: Module) -> None:
         """Save a module's state to this controller's cache directory."""
-        if not self._cache_dir:
+        if not self.cache_dir:
             return
         from velbusaio.module_cache import save_module_cache  # noqa: PLC0415
 
-        await save_module_cache(self._cache_dir, module)
+        await save_module_cache(self.cache_dir, module)
 
     async def _on_modules_loaded(self, module: Module) -> None:
         """Called when all modules are loaded."""
@@ -190,22 +196,36 @@ class Velbus:
                 task = asyncio.ensure_future(self._reconnect_loop())
                 self._background_tasks.add(task)
                 task.add_done_callback(self._background_tasks.discard)
-        for mod in self._modules.values():
-            for chan in mod.get_channels().values():
+        for mod in self.modules.values():
+            for chan in mod.channels.values():
                 await chan.status_update()
 
-    def get_cache_dir(self) -> str:
-        """Return the cache directory."""
-        return self._cache_dir
+    def add_message_listener(
+        self, listener: Callable[[Message], Awaitable[None] | None]
+    ) -> None:
+        """Add a listener for incoming raw messages."""
+        if listener not in self._message_listeners:
+            self._message_listeners.append(listener)
+
+    def remove_message_listener(
+        self, listener: Callable[[Message], Awaitable[None] | None]
+    ) -> None:
+        """Remove a listener for incoming raw messages."""
+        if listener in self._message_listeners:
+            self._message_listeners.remove(listener)
 
     async def _on_message_received(self, msg: Message) -> None:
         """On message received function."""
+        for listener in list(self._message_listeners):
+            res = listener(msg)
+            if inspect.isawaitable(res):
+                await res
         await self._handler.handle(msg)
 
     def register_module(self, module: Module) -> None:
         """Register a module on the controller."""
-        self._modules[module.get_address()] = module
-        self._log.info(f"Registered module {module.get_address()}: {module}")
+        self.modules[module.address] = module
+        self._log.info(f"Registered module {module.address}: {module}")
 
     async def add_module(
         self,
@@ -241,23 +261,13 @@ class Velbus:
         """Check if an address is a submodule."""
         return addr in self._submodules
 
-    def get_modules(self) -> dict:
-        """Return the module cache."""
-        return self._modules
-
     def get_module(self, addr: int) -> None | Module:
         """Get a module on an address."""
-        if addr in self._modules:
-            return self._modules[addr]
-        for module in self._modules.values():
-            if addr in module.get_addresses():
+        if addr in self.modules:
+            return self.modules[addr]
+        for module in self.modules.values():
+            if addr in module.addresses:
                 return module
-        return None
-
-    def get_channels(self, addr: int) -> None | dict:
-        """Get the channels for an address."""
-        if addr in self._modules:
-            return (self._modules[addr]).get_channels()
         return None
 
     async def stop(self) -> None:
@@ -271,7 +281,6 @@ class Velbus:
 
     async def connect(self) -> None:
         """Connect to the bus and load all the data."""
-        await self._handler.read_protocol_data()
         # connect to the bus
         destination = self._destination
         has_scheme = bool(re.search(r"^[A-Za-z0-9+.\-]+://", destination))
@@ -356,11 +365,13 @@ class Velbus:
             # make sure the cachedir exists
             await anyio.Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
             # scan the bus
-            await self._handler.scan()
+            scanner = VelbusScanner(self, self._one_address)
+            await scanner.scan()
 
     async def scan(self) -> None:
         """Service endpoint to restart the scan."""
-        await self._handler.scan(True)
+        scanner = VelbusScanner(self, self._one_address)
+        await scanner.scan(reload_cache=True)
 
     async def sendTypeRequestMessage(self, address: int) -> None:
         """Send a module type request message."""
@@ -402,7 +413,7 @@ class Velbus:
                 continue
             if channel.get_temp_settings() is None:
                 continue
-            key = (channel.module.get_address(), channel.get_channel_number())
+            key = (channel.module.address, channel.channel_number)
             if key in seen:
                 continue
             seen.add(key)
@@ -445,7 +456,7 @@ class Velbus:
             for param in channel.get_config_parameters():
                 if not param.entity:
                     continue
-                key = (channel.module.get_address(), param.channel, param.key)
+                key = (channel.module.address, param.channel, param.key)
                 if key in seen:
                     continue
                 seen.add(key)
@@ -456,10 +467,10 @@ class Velbus:
         """Get all channels."""
         return [
             chan
-            for addr, mod in (self.get_modules()).items()
+            for addr, mod in self.modules.items()
             if addr not in self._submodules
             for chan in itertools.chain(
-                (mod.get_channels()).values(), (mod.get_properties()).values()
+                mod.channels.values(), mod.properties.values()
             )
             if class_name in chan.get_categories()
         ]
@@ -504,7 +515,7 @@ class Velbus:
             callback: Async function to call at each interval
             interval_seconds: Time in seconds between each execution
         """
-        if name in self._scheduled_tasks:
+        if name in self.scheduled_tasks:
             self._scheduler_log.warning(f"Task '{name}' already exists, replacing it")
             self.remove_scheduled_task(name)
 
@@ -513,7 +524,7 @@ class Velbus:
             callback=callback,
             interval_seconds=interval_seconds,
         )
-        self._scheduled_tasks[name] = task
+        self.scheduled_tasks[name] = task
         task.start()
         self._scheduler_log.info(
             f"Scheduled task '{name}' added (interval: {interval_seconds}s)"
@@ -525,15 +536,7 @@ class Velbus:
         Args:
             name: Name of the task to remove
         """
-        if name in self._scheduled_tasks:
-            self._scheduled_tasks[name].stop()
-            del self._scheduled_tasks[name]
+        if name in self.scheduled_tasks:
+            self.scheduled_tasks[name].stop()
+            del self.scheduled_tasks[name]
             self._scheduler_log.info(f"Scheduled task '{name}' removed")
-
-    def get_scheduled_tasks(self) -> dict[str, ScheduledTask]:
-        """Get all scheduled tasks.
-
-        Returns:
-            Dictionary of task names to ScheduledTask objects
-        """
-        return self._scheduled_tasks.copy()

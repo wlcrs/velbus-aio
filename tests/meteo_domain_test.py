@@ -19,9 +19,9 @@ async def test_meteo_domain_raw_message(mock_controller):
     rain = Sensor(module, 11, "Rain", False, True, 1)
     light = Sensor(module, 12, "Light", False, True, 1)
     wind = Sensor(module, 13, "Wind", False, True, 1)
-    module._channels[11] = rain
-    module._channels[12] = light
-    module._channels[13] = wind
+    module.channels[11] = rain
+    module.channels[12] = light
+    module.channels[13] = wind
 
     msg = MeteoRawMessage(1)
     msg.rain = 1.2

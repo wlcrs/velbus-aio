@@ -98,49 +98,50 @@ class Module:
         build_week: int | None = None,
     ) -> None:
         """Initialize Module object."""
-        self._controller = controller
-        self._address = module_address
-        self._type = int(module_type)
+        self.controller = controller
+        self.address = module_address
+        self.type = module_type
         self._log = logging.getLogger("velbus-module")
 
-        self._name: str | dict[Any, Any] | None = None
+        self._name: str | None = None
         self._name_buffer: dict[
             int, str
         ] = {}  # temporary buffer while assembling name from memory blocks
-        self._sub_address: dict[int, int] = {}
+        self.sub_addresses: dict[int, int] = {}
         self.serial = str(serial) if serial is not None else None
         self.memory_map_version = memorymap
         self.build_year = build_year
         self.build_week = build_week
-        self._memory_map_outdated = False
+        self.memory_map_outdated = False
         self._got_status = asyncio.Event()
         self._got_status.clear()
-        self._channels: dict[int, Channel] = {}
-        self._properties: dict[str, Property] = {}
+        self.channels: dict[int, Channel] = {}
+        self.properties: dict[str, Property] = {}
 
         # load the strongly-typed spec via spec loader helper
-        self._spec: ModuleSpec = load_module_spec(self._type, self._log)
+        self.spec: ModuleSpec = load_module_spec(self.type, self._log)
         self._check_memory_map_build()
         commandRegistry.register_module_commands(
-            self._type, self._spec.command_to_class
+            self.type, self.spec.command_to_class
         )
 
         self._initialize_channels()
         self._initialize_properties()
 
-        self._memory = MemoryBackend(self._address, self.send_message, self._log)
-        if self._memory_map_outdated:
-            self._memory.block_writes(
-                f"module build {self.get_build()} predates the memory map from "
-                f"build {self.get_memory_map_build()} that its spec describes"
+        self.memory = MemoryBackend(self.address, self.send_message, self._log)
+        if self.memory_map_outdated:
+            self.memory.block_writes(
+                f"module build {self.build} predates the memory map from "
+                f"build {self.memory_map_build} that its spec describes"
             )
-        self._action_tables = build_action_tables(
-            self._memory,
-            self._spec.memory.action_table,
+        self.action_tables = build_action_tables(
+            self.memory,
+            self.spec.memory.action_table,
             self._log,
-            reserved=reserved_ranges(self._spec.memory),
+            reserved=reserved_ranges(self.spec.memory),
         )
 
+    @property
     def is_loaded(self) -> bool:
         """Return True if the module has finished its initial load."""
         return self._got_status.is_set()
@@ -152,91 +153,96 @@ class Module:
         except TimeoutError:
             self._log.warning(f"Timeout waiting for status messages for: {self}")
 
-    def get_initial_timeout(self) -> int:
+    @property
+    def initial_timeout(self) -> int:
         """Get initial timeout for scanning module info."""
         return SCAN_MODULEINFO_TIMEOUT_INITIAL
 
-    def get_build(self) -> str | None:
+    @property
+    def build(self) -> str | None:
         """Return the firmware build as "YYWW", or None when unknown."""
         return format_build(self.build_year, self.build_week)
 
-    def get_memory_map_build(self) -> str | None:
+    @property
+    def memory_map_build(self) -> str | None:
         """Return the build from which this spec's memory map applies."""
-        return self._spec.memory_map_build
-
-    def is_memory_map_outdated(self) -> bool:
-        """Whether the module predates the memory map its spec describes."""
-        return self._memory_map_outdated
+        return self.spec.memory_map_build
 
     def _check_memory_map_build(self) -> None:
         """Determine whether the module predates its spec's memory map."""
-        self._memory_map_outdated = check_memory_map_outdated(
-            self._address,
-            self._type,
+        self.memory_map_outdated = check_memory_map_outdated(
+            self.address,
+            self.type,
             self.build_year,
             self.build_week,
-            self._spec,
+            self.spec,
             self._log,
         )
 
     def cleanup_sub_channels(self) -> None:
         """Cleanup subchannels that are not defined."""
         for sub in range(1, 4):
-            if sub not in self._sub_address:
+            if sub not in self.sub_addresses:
                 for i in range(((sub * 8) + 1), (((sub + 1) * 8) + 1)):
-                    if i in self._channels and not isinstance(
-                        self._channels[i], channels_module.Temperature
+                    if i in self.channels and not isinstance(
+                        self.channels[i], channels_module.Temperature
                     ):
-                        del self._channels[i]
+                        del self.channels[i]
 
     def __repr__(self) -> str:
         """Return string representation of the module."""
         return (
-            f"<{self.get_name()} "
-            f"type:{self._type} "
-            f"address:{self._address} "
-            f"channels: {self._channels} "
-            f"properties: {self._properties}>"
+            f"<{self.name} "
+            f"type:{self.type} "
+            f"address:{self.address} "
+            f"channels: {self.channels} "
+            f"properties: {self.properties}>"
         )
 
     def __str__(self) -> str:
         """Return short string representation of the module."""
-        return f"{self._address} ({self.get_type_name()}: {self.get_name()})"
+        return f"{self.address} ({self.type_name}: {self.name})"
 
-    def get_address(self) -> int:
-        """Get the module address."""
-        return self._address
-
-    def get_addresses(self) -> list[int]:
+    @property
+    def addresses(self) -> list[int]:
         """Get all addresses for this module."""
-        return [self._address, *self._sub_address.values()]
-
-    def get_sub_address_dict(self) -> dict[int, int]:
-        """Return the sub addresses dict."""
-        return self._sub_address
+        return [self.address, *self.sub_addresses.values()]
 
     def is_sub_address(self, channel_num: int) -> bool:
         """Check if channel is a subaddress channel."""
         sub_idx = (channel_num - 1) // 8
-        return sub_idx in self._sub_address
+        return sub_idx in self.sub_addresses
 
     def set_sub_address(self, num: int, addr: int) -> None:
         """Set a subaddress for this module."""
-        self._sub_address[num] = addr
+        self.sub_addresses[num] = addr
 
-    def get_type(self) -> int:
-        """Get the module type."""
-        return self._type
-
-    def get_type_name(self) -> str:
+    @property
+    def type_name(self) -> str:
         """Get the module type name."""
-        if self._spec.type_name:
-            return self._spec.type_name
+        if self.spec.type_name:
+            return self.spec.type_name
         return "UNKNOWN"
+
+    @property
+    def name(self) -> str:
+        """Get the module name."""
+        if self._name is not None and isinstance(self._name, str):
+            return self._name
+        return self.type_name
+
+    @name.setter
+    def name(self, value: str | None) -> None:
+        self._name = value
+
+    @property
+    def sw_version(self) -> str:
+        """Get the module software version."""
+        return f"{self.build_year}.{self.build_week}"
 
     def has_command(self, code: int) -> bool:
         """Check if this module supports a given command code."""
-        return commandRegistry.has_command(code, self.get_type())
+        return commandRegistry.has_command(code, self.type)
 
     def create_message[M: Message](
         self,
@@ -244,37 +250,23 @@ class Module:
         address: int | None = None,
     ) -> M:
         """Create the correct module-specific Message variant."""
-        target_addr = self._address if address is None else address
+        target_addr = self.address if address is None else address
         code = getattr(message_cls, "_command_code", None)
         if code is not None:
-            cls = commandRegistry.get_command(code, self.get_type())
+            cls = commandRegistry.get_command(code, self.type)
             if cls is not None and issubclass(cls, message_cls):
                 return cls(target_addr)
         return message_cls(target_addr)
 
     async def send_message(self, message: Message) -> None:
         """Send a message to the bus via the controller."""
-        await self._controller.send(message)
-
-    def get_serial(self) -> str | None:
-        """Get the module serial number."""
-        return self.serial
-
-    def get_name(self) -> str | None:
-        """Get the module name."""
-        if self._name is not None and isinstance(self._name, str):
-            return self._name
-        return self.get_type_name()
-
-    def get_sw_version(self) -> str:
-        """Get the module software version."""
-        return f"{self.build_year}.{self.build_week}"
+        await self.controller.send(message)
 
     def calc_channel_offset(self, address: int) -> int:
         """Calculate channel offset based on address."""
         _channel_offset = 0
-        if self._address != address:
-            for _sub_addr_key, _sub_addr_val in self._sub_address.items():
+        if self.address != address:
+            for _sub_addr_key, _sub_addr_val in self.sub_addresses.items():
                 if _sub_addr_val == address:
                     _channel_offset = 8 * _sub_addr_key
                     break
@@ -293,7 +285,7 @@ class Module:
 
     async def _update_channel(self, channel: int, updates: dict) -> None:
         try:
-            item = self._channels[channel]
+            item = self.channels[channel]
             for key, val in updates.items():
                 setattr(item, key, val)
             await item.maybe_status_update()
@@ -304,7 +296,7 @@ class Module:
 
     async def _update_property(self, property_name: str, updates: dict) -> None:
         try:
-            item = self._properties[property_name]
+            item = self.properties[property_name]
             for key, val in updates.items():
                 setattr(item, key, val)
             await item.maybe_status_update()
@@ -313,29 +305,13 @@ class Module:
                 f"property {property_name} does not exist for module @ address {self}"
             )
 
-    def get_channels(self) -> dict[int, Channel]:
-        """Get the module channels."""
-        return self._channels
-
-    def get_properties(self) -> dict[str, Property]:
-        """Get the module properties."""
-        return self._properties
-
-    def get_memory(self) -> MemoryBackend | None:
-        """Get module memory."""
-        return self._memory
-
     def get_action_table(self, channel: int) -> ActionTable | None:
         """Return the ActionTable for a channel, if defined in the module spec."""
-        return self._action_tables.get(channel)
-
-    def get_action_tables(self) -> dict[int, ActionTable]:
-        """Return all ActionTable instances for this module."""
-        return self._action_tables
+        return self.action_tables.get(channel)
 
     def get_channel_enable_spec(self, channel: int) -> dict[str, int] | None:
         """Return EEPROM enable/disable metadata for a channel, if supported."""
-        enable = self._spec.memory.channel_enable
+        enable = self.spec.memory.channel_enable
         if not enable:
             return None
         address = enable.channels.get(channel)
@@ -358,34 +334,34 @@ class Module:
 
     def _channel_name_range(self, channel: int) -> tuple[int, int] | None:
         """Return (start, length) for a channel name memory range."""
-        mrange = self._spec.memory.channels.get(channel)
+        mrange = self.spec.memory.channels.get(channel)
         if mrange is None:
             return None
         return mrange.start, mrange.length
 
     def number_of_channels(self) -> int:
         """Retrieve the number of available channels in this module."""
-        if not len(self._channels):
+        if not len(self.channels):
             return 0
-        return max(self._channels.keys())
+        return max(self.channels.keys())
 
     async def _request_subaddresses(self) -> None:
         """Request module type / subaddresses."""
-        await self.send_message(ModuleTypeRequestMessage(self._address))
+        await self.send_message(ModuleTypeRequestMessage(self.address))
 
     async def _process_memory_data_block_message(
         self, message: MemoryDataBlockMessage, channel_offset: int = 0
     ) -> None:
-        if self._memory is not None:
-            self._memory.feed_message(message)
-        if not self._spec.memory.name_ranges or isinstance(self._name, str):
+        if self.memory is not None:
+            self.memory.feed_message(message)
+        if not self.spec.memory.name_ranges or isinstance(self._name, str):
             return
 
         incoming_addr = join_address(message.high_address, message.low_address)
         range_byte_offset = 0
-        total_bytes = sum(mr.length for mr in self._spec.memory.name_ranges)
+        total_bytes = sum(mr.length for mr in self.spec.memory.name_ranges)
 
-        for mrange in self._spec.memory.name_ranges:
+        for mrange in self.spec.memory.name_ranges:
             if mrange.start <= incoming_addr <= mrange.end:
                 position_in_range = incoming_addr - mrange.start
                 base_position = range_byte_offset + position_in_range
@@ -403,19 +379,19 @@ class Module:
     async def _process_memory_data_message(
         self, message: MemoryDataMessage, channel_offset: int = 0
     ) -> None:
-        if self._memory is not None:
-            self._memory.feed_message(message)
+        if self.memory is not None:
+            self.memory.feed_message(message)
         addr_int = join_address(message.high_address, message.low_address)
-        if not self._spec.memory.address or addr_int not in self._spec.memory.address:
+        if not self.spec.memory.address or addr_int not in self.spec.memory.address:
             return
-        mdata = self._spec.memory.address[addr_int]
+        mdata = self.spec.memory.address[addr_int]
         if mdata.match is not None:
             for chan, chan_data in handle_match(mdata.match, message.data).items():
                 data = chan_data.copy()
                 if "PulsePerUnits" in data:
                     current_pulses = (
-                        getattr(self._channels[chan], "pulses", None)
-                        or getattr(self._channels[chan], "_pulses", 0)
+                        getattr(self.channels[chan], "pulses", None)
+                        or getattr(self.channels[chan], "_pulses", 0)
                         or 0
                     )
                     if addr_int % 4 == 0:
@@ -441,34 +417,34 @@ class Module:
     def get_channel(self, channel: str | int) -> Channel | None:
         """Return channel instance by packet channel number, applying hardware index remapping."""
         channel_id = self.map_channel_number(channel)
-        return self._channels.get(channel_id)
+        return self.channels.get(channel_id)
 
     def map_channel_number(self, channel: str | int) -> int:
         """Remap raw hardware packet channel byte to internal channel ID."""
         key = f"{int(channel):02X}"
-        if key in self._spec.channel_number_map:
-            return self._spec.channel_number_map[key]
+        if key in self.spec.channel_number_map:
+            return self.spec.channel_number_map[key]
         return int(channel)
 
     async def _request_module_status(self) -> None:
         """Request current state of channels."""
-        if not self._spec.channels:
+        if not self.spec.channels:
             return
-        self._log.info(f"Request module status {self._address}")
+        self._log.info(f"Request module status {self.address}")
 
-        mod_stat_req_msg = ModuleStatusRequestMessage(self._address)
+        mod_stat_req_msg = ModuleStatusRequestMessage(self.address)
         counter_msg = None
-        if self._spec.all_channel_status:
-            mod_stat_req_msg.channels = self._spec.all_channel_status
+        if self.spec.all_channel_status:
+            mod_stat_req_msg.channels = self.spec.all_channel_status
         else:
-            for chan_num, chan_spec in self._spec.channels.items():
+            for chan_num, chan_spec in self.spec.channels.items():
                 if chan_num < 9 and issubclass(
                     chan_spec.channel_class, (Blind, Dimmer, Relay)
                 ):
                     mod_stat_req_msg.channels.append(chan_num)
                 if issubclass(chan_spec.channel_class, ButtonCounter):
                     if counter_msg is None:
-                        counter_msg = CounterStatusRequestMessage(self._address)
+                        counter_msg = CounterStatusRequestMessage(self.address)
                     counter_msg.channels.append(chan_num)
         await self.send_message(mod_stat_req_msg)
         if counter_msg is not None:
@@ -476,13 +452,13 @@ class Module:
 
     async def _request_channel_name(self) -> None:
         msg_type = commandRegistry.get_command(
-            CHANNEL_NAME_REQUEST_COMMAND_CODE, self.get_type()
+            CHANNEL_NAME_REQUEST_COMMAND_CODE, self.type
         )
         if msg_type is None:
             return
-        msg = msg_type(self._address)
+        msg = msg_type(self.address)
         msg.priority = PRIORITY_LOW
-        if self._spec.all_channel_status:
+        if self.spec.all_channel_status:
             msg.channels = 0xFF
         else:
             msg.channels = list(range(1, (self.number_of_channels() + 1)))
@@ -490,25 +466,25 @@ class Module:
 
     async def _request_memory(self) -> None:
         """Request all needed memory addresses."""
-        if not self._spec.memory.name_ranges and not self._spec.memory.address:
-            self._name = None
+        if not self.spec.memory.name_ranges and not self.spec.memory.address:
+            self.name = None
             return
 
-        if self._type == 0x0C:
-            self._name = None
+        if self.type == 0x0C:
+            self.name = None
             return
 
-        for addr_int in self._spec.memory.address:
-            msg = ReadDataFromMemoryMessage(self._address)
+        for addr_int in self.spec.memory.address:
+            msg = ReadDataFromMemoryMessage(self.address)
             msg.priority = PRIORITY_LOW
             msg.high_address = (addr_int >> 8) & 0xFF
             msg.low_address = addr_int & 0xFF
             await self.send_message(msg)
 
-        for mrange in self._spec.memory.name_ranges:
+        for mrange in self.spec.memory.name_ranges:
             current_addr = mrange.start
             while current_addr <= mrange.end:
-                block_msg = ReadDataBlockFromMemoryMessage(self._address)
+                block_msg = ReadDataBlockFromMemoryMessage(self.address)
                 block_msg.priority = PRIORITY_LOW
                 block_msg.high_address = (current_addr >> 8) & 0xFF
                 block_msg.low_address = current_addr & 0xFF
@@ -517,33 +493,33 @@ class Module:
 
     def _initialize_properties(self) -> None:
         """Method for per module type initialization of properties."""
-        for prop, prop_spec in self._spec.properties.items():
-            self._properties[prop] = prop_spec.prop_class(
+        for prop, prop_spec in self.spec.properties.items():
+            self.properties[prop] = prop_spec.prop_class(
                 module=self,
                 name=prop_spec.name,
             )
 
     def _initialize_channels(self) -> None:
         """Initialize default module channels from spec."""
-        for chan_num, chan_spec in self._spec.channels.items():
+        for chan_num, chan_spec in self.spec.channels.items():
             cls = chan_spec.channel_class
-            self._channels[chan_num] = cls(
+            self.channels[chan_num] = cls(
                 module=self,
                 num=chan_num,
                 name=chan_spec.name,
                 nameEditable=chan_spec.editable,
                 subDevice=chan_spec.subdevice,
-                address=self._address,
+                address=self.address,
             )
             if issubclass(cls, channels_module.Temperature) and (
-                self._spec.thermostat
-                or (self._spec.thermostat_addr is not None and self._spec.thermostat_addr != 0)
+                self.spec.thermostat
+                or (self.spec.thermostat_addr is not None and self.spec.thermostat_addr != 0)
             ):
-                self._channels[chan_num].thermostat = True
-            if issubclass(cls, Dimmer) and self._spec.slider_scale:
-                dimmer_channel = self._channels[chan_num]
+                self.channels[chan_num].thermostat = True
+            if issubclass(cls, Dimmer) and self.spec.slider_scale:
+                dimmer_channel = self.channels[chan_num]
                 if isinstance(dimmer_channel, Dimmer):
-                    dimmer_channel.slider_scale = self._spec.slider_scale
+                    dimmer_channel.slider_scale = self.spec.slider_scale
 
 
 def __getattr__(name: str) -> Any:

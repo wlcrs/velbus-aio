@@ -32,12 +32,12 @@ _LOG = logging.getLogger("velbus-lighting")
 def _get_relay(module: Module, raw_channel: int | str) -> Relay | None:
     channel_id = module.map_channel_number(raw_channel)
     relays = {
-        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Relay)
+        num: ch for num, ch in module.channels.items() if isinstance(ch, Relay)
     }
     relay = relays.get(channel_id)
     if relay is None:
         _LOG.warning(
-            f"Received relay message for non-existent relay channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+            f"Received relay message for non-existent relay channel {raw_channel} (mapped: {channel_id}) on module {module.address}"
         )
     return relay
 
@@ -45,12 +45,12 @@ def _get_relay(module: Module, raw_channel: int | str) -> Relay | None:
 def _get_dimmer(module: Module, raw_channel: int | str) -> Dimmer | None:
     channel_id = module.map_channel_number(raw_channel)
     dimmers = {
-        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Dimmer)
+        num: ch for num, ch in module.channels.items() if isinstance(ch, Dimmer)
     }
     dimmer = dimmers.get(channel_id)
     if dimmer is None:
         _LOG.warning(
-            f"Received dimmer message for non-existent dimmer channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+            f"Received dimmer message for non-existent dimmer channel {raw_channel} (mapped: {channel_id}) on module {module.address}"
         )
     return dimmer
 

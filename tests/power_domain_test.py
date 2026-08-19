@@ -29,9 +29,9 @@ async def test_power_domain_psu_values(mock_controller):
     c1 = PSUCurrent(module, "psu_1_amp")
     p1 = PSUPower(module, "psu_1_watt")
 
-    module._properties["psu_1_volt"] = v1
-    module._properties["psu_1_amp"] = c1
-    module._properties["psu_1_watt"] = p1
+    module.properties["psu_1_volt"] = v1
+    module.properties["psu_1_amp"] = c1
+    module.properties["psu_1_watt"] = p1
 
     msg = PsuValuesMessage(1)
     msg.channel = 1
@@ -44,9 +44,6 @@ async def test_power_domain_psu_values(mock_controller):
     assert v1.value == 13.8
     assert c1.value == 2.5
     assert p1.value == 34.5
-    assert v1.get_state() == 13.8
-    assert c1.get_state() == 2.5
-    assert p1.get_state() == 34.5
 
 
 @pytest.mark.asyncio
@@ -57,9 +54,9 @@ async def test_power_domain_bus_error_counters(mock_controller):
     rx_prop = BusErrorRx(module, "bus_rx")
     tx_prop = BusErrorTx(module, "bus_tx")
 
-    module._properties["bus_off"] = off_prop
-    module._properties["bus_rx"] = rx_prop
-    module._properties["bus_tx"] = tx_prop
+    module.properties["bus_off"] = off_prop
+    module.properties["bus_rx"] = rx_prop
+    module.properties["bus_tx"] = tx_prop
 
     msg = BusErrorCounterStatusMessage(1)
     msg.bus_off_counter = 0
@@ -71,6 +68,3 @@ async def test_power_domain_bus_error_counters(mock_controller):
     assert off_prop.value == 0
     assert rx_prop.value == 3
     assert tx_prop.value == 1
-    assert off_prop.get_state() == 0
-    assert rx_prop.get_state() == 3
-    assert tx_prop.get_state() == 1

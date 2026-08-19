@@ -18,17 +18,18 @@ if TYPE_CHECKING:
 
 
 async def create_module_from_vlp(
-    vlp_mod: vlpModule, *, controller: Controller
-) -> Module:
-    """Construct and populate a Module instance from parsed VLP module data."""
+    vlp_mod: "vlpModule",
+    controller: "Controller",
+) -> "Module | None":
+    """Create a Module instance from a parsed vlpModule."""
     from velbusaio.module import Module  # noqa: PLC0415
 
-    addr = vlp_mod.get_decimal_addr()
-    mod_type = vlp_mod.get_type()
+    mod_type = vlp_mod.type_id
     if mod_type is None:
-        raise ValueError(f"Unknown module type for VLP module {vlp_mod.get_name()}")
+        return None
+    addr = vlp_mod.decimal_addr
 
-    build = vlp_mod.get_build()
+    build = vlp_mod.build
     build_year = int(build[:2]) if len(build) >= 4 and build[:2].isdigit() else None
     build_week = int(build[2:4]) if len(build) >= 4 and build[2:4].isdigit() else None
 
@@ -36,34 +37,34 @@ async def create_module_from_vlp(
         addr,
         mod_type,
         controller=controller,
-        serial=vlp_mod.get_serial(),
+        serial=vlp_mod.serial,
         build_year=build_year,
         build_week=build_week,
     )
-    module._name = vlp_mod.get_name()  # noqa: SLF001
-    for chan_addr, chan_info in vlp_mod.get_channels().items():
+    module.name = vlp_mod.name
+    for chan_addr, chan_info in vlp_mod.channels.items():
         try:
             chan_num = int(chan_addr)
         except ValueError:
             continue
-        if chan_num in module._channels and isinstance(chan_info, dict):  # noqa: SLF001
+        if chan_num in module.channels and isinstance(chan_info, dict):
             if "Name" in chan_info:
-                module._channels[chan_num].name = chan_info["Name"]  # noqa: SLF001
+                module.channels[chan_num].name = chan_info["Name"]
             unit = chan_info.get("Unit")
             if unit and unit != "reserved":
                 from velbusaio.channels import CounterChannel  # noqa: PLC0415
 
-                existing_chan = module._channels[chan_num]  # noqa: SLF001
+                existing_chan = module.channels[chan_num]
                 counter = CounterChannel(
                     module=module,
                     num=chan_num,
                     name=existing_chan.name,
                     nameEditable=True,
-                    subDevice=existing_chan.is_sub_device(),
+                    subDevice=existing_chan.sub_device,
                     address=addr,
                 )
                 counter.set_unit(unit)
-                module._channels[chan_num] = counter  # noqa: SLF001
+                module.channels[chan_num] = counter
     return module
 
 
@@ -73,12 +74,12 @@ class VlpFile:
     def __init__(self, file_path) -> None:
         """Initialize VLP file reader."""
         self._file_path = file_path
-        self._modules = []
+        self.modules: list["vlpModule"] = []
         self._log = logging.getLogger("velbus-vlpFile")
 
     def get(self) -> list:
         """Return the parsed modules."""
-        return self._modules
+        return self.modules
 
     async def read(self) -> None:
         """Read and parse the VLP file."""
@@ -98,17 +99,9 @@ class VlpFile:
                 module["type"],
                 memory_tag.get_text(),
             )
-            self._modules.append(mod)
+            self.modules.append(mod)
             await mod.parse()
-        self._modules.sort(key=lambda mod: mod.get_decimal_addr())
-
-    # def dump(self) -> None:
-    #    """Dump the parsed modules to the log."""
-    #    for m in self._modules:
-    #        print(f"Module {m.get_decimal_addr()}: {m._name}, type {m._type_id}")
-    #        for key, value in m._channels.items():
-    #            name = value["Name"]
-    #            print(f"  {key} => {name}")
+        self.modules.sort(key=lambda mod: mod.decimal_addr)
 
 
 class vlpModule:
@@ -116,72 +109,43 @@ class vlpModule:
 
     def __init__(self, name, addresses, build, serial, module_type, memory) -> None:
         """Initialize VLP module."""
-        self._name = name
-        self._addresses = addresses
-        self._build = build
-        self._serial = serial
-        self._type = module_type
-        self._memory = memory
-        self._spec = {}
-        self._channels = {}
-        self._type_id = next(
-            (key for key, value in MODULE_DIRECTORY.items() if value == self._type),
+        self.name = name
+        self.addresses = addresses
+        self.build = build
+        self.serial = serial
+        self.type = module_type
+        self.memory = memory
+        self.spec = {}
+        self.channels = {}
+        self.type_id = next(
+            (key for key, value in MODULE_DIRECTORY.items() if value == self.type),
             None,
         )
         self._log = logging.getLogger("velbus-vlpFile")
         self._log.info(
-            f"=> Created vlpModule address: {self._addresses} type: {self._type} ({self._type_id})"
+            f"=> Created vlpModule address: {self.addresses} type: {self.type} ({self.type_id})"
         )
-
-    def get_addr(self) -> str:
-        """Get module address."""
-        return self._addresses
-
-    def get_name(self) -> str:
-        """Get module name."""
-        return self._name
-
-    def get_type(self) -> int | None:
-        """Get module type ID."""
-        return self._type_id
-
-    def get_serial(self) -> str:
-        """Get module serial number."""
-        return self._serial
-
-    def get_memory(self) -> str:
-        """Get module memory."""
-        return self._memory
-
-    def get_build(self) -> str:
-        """Get module build."""
-        return self._build
-
-    def get_channels(self) -> dict:
-        """Get module channels."""
-        return self._channels
 
     def __str__(self):
         """String representation of the module."""
-        return f"vlpModule(name={self._name}, addresses={self._addresses}, build={self._build}, serial={self._serial}, type={self._type})"
+        return f"vlpModule(name={self.name}, addresses={self.addresses}, build={self.build}, serial={self.serial}, type={self.type})"
 
-    def get_decimal_addr(
-        self,
-    ) -> int:
+    @property
+    def decimal_addr(self) -> int:
         """Get decimal primary module address."""
-        addr = self._addresses.split(",")[0]
+        addr = self.addresses.split(",")[0]
         return int(addr, 16)
 
     async def parse(self) -> None:
         """Parse the VLP module memory and extract channel names."""
         await self._load_module_spec()
 
-        if not self._spec.memory.channels and not self._spec.memory.extras:
+        if not self.spec.memory.channels and not self.spec.memory.extras:
             self._log.debug("  => no Memory locations found")
             return
 
         # channel names
-        self._channels = {
+        self.channels = {
             num: {
                 "Name": chan_spec.name,
                 "Editable": "yes" if chan_spec.editable else "no",
@@ -205,10 +169,10 @@ class vlpModule:
     def _load_extra_data(self) -> None:
         """Load extra data from memory."""
         self._log.debug(" => Getting extra data")
-        if not self._spec.memory.extras:
+        if not self.spec.memory.extras:
             self._log.debug("  => no Extra Memory locations found")
             return
-        for addr, extra in self._spec.memory.extras.items():
+        for addr, extra in self.spec.memory.extras.items():
             byte_data = bytes.fromhex(self._read_from_memory(addr))
             self._log.debug(
                 f"  => got extra data {byte_data.hex().upper()} from address {addr}"
@@ -222,7 +186,7 @@ class vlpModule:
                             self._log.debug(
                                 f"   => Binary pattern {translate_key} matched, value: {translate_value}"
                             )
-                            self._channels[translate_value["Channel"]][
+                            self.channels[translate_value["Channel"]][
                                 translate_value["SubName"]
                             ] = translate_value["Value"]
                             translation_found = True
@@ -234,7 +198,7 @@ class vlpModule:
                                 self._log.debug(
                                     f"   => Direct match for value {int_key}: {translate_value}"
                                 )
-                                self._channels[translate_value["Channel"]][
+                                self.channels[translate_value["Channel"]][
                                     translate_value["SubName"]
                                 ] = translate_value["Value"]
                                 translation_found = True
@@ -287,15 +251,15 @@ class vlpModule:
     def _get_channel_name(self, chan: int) -> str | None:
         """Get the channel name from memory."""
         self._log.debug(f" => Getting channel name for {chan}")
-        if not self._spec.memory.channels:
+        if not self.spec.memory.channels:
             self._log.debug("  => no Channels Memory locations found")
             return None
         dchan = format(chan, "02d")
-        if dchan not in self._spec.memory.channels:
+        if dchan not in self.spec.memory.channels:
             self._log.debug(f"  => no chan {chan} Memory locations found")
             return None
         byte_data = bytes.fromhex(
-            self._read_from_memory(self._spec.memory.channels[dchan]).replace(
+            self._read_from_memory(self.spec.memory.channels[dchan]).replace(
                 "FF", ""
             )
         )
@@ -308,28 +272,28 @@ class vlpModule:
 
     async def _load_module_spec(self) -> None:
         """Load the module specification JSON based on type ID."""
-        self._log.debug(f" => Load module spec for {self._type_id}")
+        self._log.debug(f" => Load module spec for {self.type_id}")
 
         # remap VMBELx modules to unified memorymap based on build number
         # remap VMBELx TO VMBELx-20
-        memmap_id = self._type_id
-        if memmap_id == 0x34 and self._build >= "2524":  # VMBEL1
+        memmap_id = self.type_id
+        if memmap_id == 0x34 and self.build >= "2524":  # VMBEL1
             memmap_id = 0x4F
-        elif memmap_id == 0x35 and self._build >= "2524":  # VMBEL2
+        elif memmap_id == 0x35 and self.build >= "2524":  # VMBEL2
             memmap_id = 0x50
-        elif memmap_id == 0x36 and self._build >= "2524":  # VMBEL4
+        elif memmap_id == 0x36 and self.build >= "2524":  # VMBEL4
             memmap_id = 0x51
-        elif memmap_id == 0x37 and self._build >= "2438":  # VMBELO
+        elif memmap_id == 0x37 and self.build >= "2438":  # VMBELO
             memmap_id = 0x52
-        elif memmap_id == 0x38 and self._build >= "2524":  # VMBELPIR
+        elif memmap_id == 0x38 and self.build >= "2524":  # VMBELPIR
             memmap_id = 0x5C
-        if memmap_id != self._type_id:
+        if memmap_id != self.type_id:
             self._log.debug(
-                f" => Load module spec for {self._type_id}, {self._build} => {memmap_id}"
+                f" => Load module spec for {self.type_id}, {self.build} => {memmap_id}"
             )
 
         assert memmap_id is not None
-        self._spec = load_module_spec(memmap_id, self._log)
+        self.spec = load_module_spec(memmap_id, self._log)
 
     def _read_from_memory(self, address_range) -> str:
         """Read a range of bytes from the module memory."""
@@ -343,9 +307,9 @@ class vlpModule:
         if "-" not in address_range:
             start = int(address_range, 16) * 2
             end = (int(address_range, 16) + 1) * 2
-            return self._memory[start:end]
+            return self.memory[start:end]
         # its a range
         start_str, end_str = address_range.split("-")
         start = int(start_str, 16) * 2
         end = (int(end_str, 16) + 1) * 2
-        return self._memory[start:end]
+        return self.memory[start:end]

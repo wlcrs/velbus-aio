@@ -67,14 +67,14 @@ class Dimmer(Channel):
         msg = self.create_message(SetDimmerMessage)
         msg.dimmer_state = int(slider * self.slider_scale / 100)
         msg.dimmer_transitiontime = int(transitiontime)
-        msg.dimmer_channels = [self._num]
+        msg.dimmer_channels = [self.channel_number]
         await self.send_message(msg)
 
     async def restore_dimmer_state(self, transitiontime: int = 0) -> None:
         """Restore dimmer to last known state."""
         msg = self.create_message(RestoreDimmerMessage)
         msg.dimmer_transitiontime = int(transitiontime)
-        msg.dimmer_channels = [self._num]
+        msg.dimmer_channels = [self.channel_number]
         await self.send_message(msg)
 
 
@@ -148,32 +148,36 @@ class Relay(Channel):
 
     def supports_inhibit(self) -> bool:
         """Return True when inhibit / cancel-inhibit commands are available."""
-        return self.module.has_command(Inhibit._command_code)
+        return self.has_command(Inhibit._command_code)  # noqa: SLF001
 
     def supports_forced_on(self) -> bool:
         """Return True when forced-on / cancel-forced-on commands are available."""
-        return self.module.has_command(ForcedOn._command_code)
+        return self.has_command(ForcedOn._command_code)  # noqa: SLF001
 
     def supports_forced_off(self) -> bool:
         """Return True when forced-off / cancel-forced-off commands are available."""
-        return self.module.has_command(ForcedOff._command_code)
+        return self.has_command(ForcedOff._command_code)  # noqa: SLF001
+
+    def has_command(self, code: int) -> bool:
+        """Check if parent module supports a command code."""
+        return self.module.has_command(code)
 
     async def turn_on(self) -> None:
-        """Send the turn on message."""
+        """Turn relay on."""
         msg = self.create_message(SwitchRelayOnMessage)
-        msg.relay_channels = [self._num]
+        msg.relay_channels = [self.channel_number]
         await self.send_message(msg)
 
     async def turn_off(self) -> None:
-        """Send the turn off message."""
+        """Turn relay off."""
         msg = self.create_message(SwitchRelayOffMessage)
-        msg.relay_channels = [self._num]
+        msg.relay_channels = [self.channel_number]
         await self.send_message(msg)
 
     async def set_forced_on(self, state: bool) -> None:
         """Set or cancel forced on."""
         msg = self.create_message(ForcedOn if state else CancelForcedOn)
-        msg.channel = self._num
+        msg.relay_channels = [self.channel_number]
         if state:
             msg.delay_time = 0xFFFFFF  # Permanent
         await self.send_message(msg)
@@ -181,7 +185,7 @@ class Relay(Channel):
     async def set_forced_off(self, state: bool) -> None:
         """Set or cancel forced off."""
         msg = self.create_message(ForcedOff if state else CancelForcedOff)
-        msg.channel = self._num
+        msg.relay_channels = [self.channel_number]
         if state:
             msg.delay_time = 0xFFFFFF  # Permanent
         await self.send_message(msg)
@@ -189,23 +193,23 @@ class Relay(Channel):
     async def set_inhibit(self, state: bool) -> None:
         """Set or cancel inhibit."""
         msg = self.create_message(Inhibit if state else CancelInhibit)
-        msg.channel = self._num
+        msg.channel = self.channel_number
         if state:
             msg.delay_time = 0xFFFFFF  # Permanent
         await self.send_message(msg)
 
     async def get_normal_closed(self, *, refresh: bool = False) -> bool | None:
         """Return True when this relay is programmed as normally closed."""
-        table = self.get_action_table()
+        table = self.action_table
         if table is None:
             return None
         return await table.get_normal_closed(refresh=refresh)
 
     async def set_normal_closed(self, normal_closed: bool) -> None:
         """Program NO/NC contact behaviour in EEPROM."""
-        table = self.get_action_table()
+        table = self.action_table
         if table is None:
-            raise RuntimeError(f"Channel {self._num} has no action table")
+            raise RuntimeError(f"Channel {self.channel_number} has no action table")
         await table.set_normal_closed(normal_closed)
 
     def get_config_parameters(self) -> list[ConfigParameter]:
@@ -218,7 +222,7 @@ class Relay(Channel):
                 getter=self._get_name_value,
                 setter=self.set_name_persistent,
                 max_length=16,
-                channel=self._num,
+                channel=self.channel_number,
                 entity=False,
             ),
         ]
@@ -230,7 +234,7 @@ class Relay(Channel):
                     kind="bool",
                     getter=self._get_inhibit_value,
                     setter=self.set_inhibit,
-                    channel=self._num,
+                    channel=self.channel_number,
                 )
             )
         if self.supports_forced_on():
@@ -241,7 +245,7 @@ class Relay(Channel):
                     kind="bool",
                     getter=self._get_forced_on_value,
                     setter=self.set_forced_on,
-                    channel=self._num,
+                    channel=self.channel_number,
                 )
             )
         if self.supports_forced_off():
@@ -252,10 +256,10 @@ class Relay(Channel):
                     kind="bool",
                     getter=self._get_forced_off_value,
                     setter=self.set_forced_off,
-                    channel=self._num,
+                    channel=self.channel_number,
                 )
             )
-        table = self.get_action_table()
+        table = self.action_table
         if table is not None and table.noc_address is not None:
             params.append(
                 ConfigParameter(
@@ -265,7 +269,7 @@ class Relay(Channel):
                     getter=self._get_contact_value,
                     setter=self._set_contact_value,
                     options=["NO", "NC"],
-                    channel=self._num,
+                    channel=self.channel_number,
                     entity=False,
                 )
             )

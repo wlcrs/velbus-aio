@@ -22,6 +22,7 @@ class PushButtonStatusMessage(DeclarativeMessage):
     opened = ChannelsField(1)
     closed_long = ChannelsField(2)
 
-    def get_channels(self):
-        """:return: list"""
+    @property
+    def channels(self) -> list[int]:
+        """Return the channels affected by this push button message."""
         return self.closed + self.opened

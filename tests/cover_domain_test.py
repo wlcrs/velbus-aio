@@ -21,7 +21,7 @@ async def test_cover_domain_single_status(mock_controller):
     module = Module(1, 0x1B, controller=mock_controller)
 
     blind = Blind(module, 1, "Blind 1", False, True, 1)
-    module._channels[1] = blind
+    module.channels[1] = blind
 
     msg = BlindStatusNgMessage(1)
     msg.channel = 1
@@ -42,8 +42,8 @@ async def test_cover_domain_ng20(mock_controller):
 
     blind1 = Blind(module, 1, "Blind 1", False, True, 1)
     blind2 = Blind(module, 2, "Blind 2", False, True, 1)
-    module._channels[1] = blind1
-    module._channels[2] = blind2
+    module.channels[1] = blind1
+    module.channels[2] = blind2
 
     msg = BlindStatusNg20Message(1)
     msg.channel = [1, 2]

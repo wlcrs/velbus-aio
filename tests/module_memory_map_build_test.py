@@ -139,9 +139,9 @@ async def test_outdated_module_is_flagged_for_home_assistant():
     """The mismatch is state, not only a log line, so HA can show it."""
     module = await _build(VMB4DC, year=18, week=2)
 
-    assert module.is_memory_map_outdated() is True
-    assert module.get_build() == "1802"
-    assert module.get_memory_map_build() == "1915"
+    assert module.memory_map_outdated is True
+    assert module.build == "1802"
+    assert module.memory_map_build == "1915"
 
 
 @pytest.mark.asyncio
@@ -149,15 +149,15 @@ async def test_current_module_is_not_flagged():
     """A module on current firmware carries no flag."""
     module = await _build(VMB4DC, year=25, week=1)
 
-    assert module.is_memory_map_outdated() is False
-    assert module.get_memory_map_build() == "1915"
+    assert module.memory_map_outdated is False
+    assert module.memory_map_build == "1915"
 
 
 @pytest.mark.asyncio
 async def test_writes_are_refused_on_an_outdated_module():
     """Writing would corrupt the module, so it must fail loudly."""
     module = await _build(VMB4DC, year=18, week=2)
-    memory = module.get_memory()
+    memory = module.memory
 
     assert memory.writes_blocked is True
     with pytest.raises(VelbusMemoryWriteBlocked):
@@ -171,7 +171,7 @@ async def test_writes_are_allowed_on_a_current_module():
     """The guard must not block modules that are fine."""
     module = await _build(VMB4DC, year=25, week=1)
 
-    assert module.get_memory().writes_blocked is False
+    assert module.memory.writes_blocked is False
 
 
 @pytest.mark.asyncio
@@ -179,8 +179,8 @@ async def test_writes_are_allowed_when_no_build_is_declared():
     """Specs without a declared build can never block writes."""
     module = await _build(VMBLCDWB, year=10, week=1)
 
-    assert module.is_memory_map_outdated() is False
-    assert module.get_memory().writes_blocked is False
+    assert module.memory_map_outdated is False
+    assert module.memory.writes_blocked is False
 
 
 def test_declared_builds_are_four_digit_strings():

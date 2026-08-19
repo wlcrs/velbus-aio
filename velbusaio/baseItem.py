@@ -43,6 +43,9 @@ class DirtyTrackingMixin:
 class BaseItem(DirtyTrackingMixin, ABC):
     """Base class for properties or channels."""
 
+    sub_device: bool = False
+    channel_number: int = 0
+
     def __init__(
         self,
         module: Module,
@@ -66,9 +69,9 @@ class BaseItem(DirtyTrackingMixin, ABC):
     @property
     def full_name(self) -> str:
         """Return full channel name including module name and type."""
-        if self.is_sub_device():
-            return f"{self.module.get_name()} ({self.module.get_type_name()}) - {self.name}"
-        return f"{self.module.get_name()} ({self.module.get_type_name()})"
+        if self.sub_device:
+            return f"{self.module.name} ({self.module.type_name}) - {self.name}"
+        return f"{self.module.name} ({self.module.type_name})"
 
     @final
     def __repr__(self) -> str:
@@ -92,17 +95,12 @@ class BaseItem(DirtyTrackingMixin, ABC):
     def get_sensor_type(self) -> str | None:
         """Get the sensor type of this property."""
 
-    @abstractmethod
-    def is_sub_device(self) -> bool:
-        """Return if this item is a subdevice."""
-
-    @abstractmethod
-    def get_identifier(self) -> str:
-        """Return a unique identifier for this property."""
-
-    @abstractmethod
-    def get_channel_number(self) -> int:
-        """Return the channel number of this item."""
+    @property
+    def identifier(self) -> str:
+        """Return a unique identifier for this property or channel."""
+        if not self.sub_device:
+            return str(self.module.address)
+        return f"{self.module.address}-{self.channel_number}"
 
     @final
     def to_cache(self) -> dict:

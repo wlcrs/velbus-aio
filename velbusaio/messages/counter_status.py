@@ -53,7 +53,3 @@ class CounterStatusMessage(DeclarativeMessage):
             return 0.0
         val = float((1000 * 1000 * 3600) / (self.delay * self.pulses))
         return val if val >= 55 else 0.0
-
-    def get_channels(self):
-        """:return: list"""
-        return self.channel

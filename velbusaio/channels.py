@@ -36,20 +36,12 @@ class Channel(BaseItem):
     ):
         """Initialize the channel."""
         super().__init__(module, name)
-        self._num = num
-        self._subDevice = subDevice
-        self._address = address
+        self.channel_number = num
+        self.name_editable = nameEditable
+        self.sub_device = subDevice
+        self.address = address
         self._name_parts = {}
-
-    def get_identifier(self) -> str:
-        """Return the identifier of the entity."""
-        if not self.is_sub_device():
-            return str(self._address)
-        return f"{self._address}-{self.get_channel_number()}"
-
-    def get_channel_number(self) -> int:
-        """Return channel number."""
-        return self._num
+        self._is_dirty = False
 
     def create_message[M: Message](
         self,
@@ -57,16 +49,8 @@ class Channel(BaseItem):
         address: int | None = None,
     ) -> M:
         """Create the correct module-specific Message variant for this channel."""
-        target_addr = self._address if address is None else address
+        target_addr = self.address if address is None else address
         return self.module.create_message(message_cls, address=target_addr)
-
-    def set_sub_device(self, sub_device: bool) -> None:
-        """Set if this channel is a subdevice."""
-        self._subDevice = sub_device
-
-    def is_sub_device(self) -> bool:
-        """Return if this channel is a subdevice."""
-        return self._subDevice
 
     def set_name_char(self, pos: int, char: int) -> None:
         """Set a char of the channel name."""
@@ -91,24 +75,24 @@ class Channel(BaseItem):
 
     async def set_name_persistent(self, name: str) -> None:
         """Write channel name into module EEPROM and update the local name."""
-        memory = self.module.get_memory()
+        memory = self.module.memory
         if memory is None:
             raise RuntimeError("Module memory backend is not initialized")
-        name_range = self.module._channel_name_range(self._num)
+        name_range = self.module._channel_name_range(self.channel_number)
         if name_range is None:
-            raise ValueError(f"Channel {self._num} has no name memory range")
+            raise ValueError(f"Channel {self.channel_number} has no name memory range")
         start, length = name_range
         encoded = encode_name(name, length)
         await memory.write_bytes(start, encoded)
         self.name = decode_name(encoded)
-        await self.module._controller.save_module_cache(self.module)  # noqa: SLF001
+        await self.module.controller.save_module_cache(self.module)
 
     def to_cache(self) -> dict:
         """Get channel state for caching."""
         dst = {
             "name": self.name,
             "type": type(self).__name__,
-            "subdevice": self._subDevice,
+            "subdevice": self.sub_device,
         }
         if getattr(self, "Unit", None) is not None:
             dst["Unit"] = self.Unit
@@ -149,15 +133,16 @@ class Channel(BaseItem):
         """Return the sensor type."""
         return None
 
-    def get_action_table(self):
+    @property
+    def action_table(self) -> ActionTable | None:
         """Return this channel's action table, if available."""
-        return self.module.get_action_table(self._num)
+        return self.module.action_tables.get(self.channel_number)
 
     async def get_actions(
         self, *, refresh: bool = False, include_empty: bool = False
     ) -> list[ActionSlot]:
         """Return programmed input→output action slots for this channel."""
-        table = self.get_action_table()
+        table = self.action_table
         if table is None:
             return []
         return await table.get_actions(refresh=refresh, include_empty=include_empty)
@@ -177,9 +162,9 @@ class Channel(BaseItem):
         slot: int | None = None,
     ) -> ActionSlot:
         """Program an input→output action on this channel."""
-        table = self.get_action_table()
+        table = self.action_table
         if table is None:
-            raise RuntimeError(f"Channel {self._num} has no action table")
+            raise RuntimeError(f"Channel {self.channel_number} has no action table")
         return await table.set_action(
             source_address=source_address,
             action=action,
@@ -195,9 +180,9 @@ class Channel(BaseItem):
 
     async def clear_action(self, slot: int) -> ActionSlot:
         """Clear one action slot on this channel."""
-        table = self.get_action_table()
+        table = self.action_table
         if table is None:
-            raise RuntimeError(f"Channel {self._num} has no action table")
+            raise RuntimeError(f"Channel {self.channel_number} has no action table")
         return await table.clear_action(slot)
 
     async def clear_actions_for_source(
@@ -208,7 +193,7 @@ class Channel(BaseItem):
         source_bit: int | None = None,
     ) -> list[ActionSlot]:
         """Clear action slots matching a source input."""
-        table = self.get_action_table()
+        table = self.action_table
         if table is None:
             return []
         return await table.clear_actions_for_source(

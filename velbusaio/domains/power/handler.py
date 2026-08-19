@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 async def handle_psu_values(module: Module, message: PsuValuesMessage) -> None:
     """Route PSU volt, amp, and watt readings."""
     suffix = "out" if message.channel == 3 else f"{message.channel}"
-    props = module.get_properties().values()
+    props = module.properties.values()
     for prop in props:
         if suffix in prop.name:
             if isinstance(prop, PSUVoltage):
@@ -40,7 +40,7 @@ async def handle_psu_values(module: Module, message: PsuValuesMessage) -> None:
 @register_handler
 async def handle_psu_load(module: Module, message: PsuLoadMessage) -> None:
     """Route PSU load readings."""
-    for prop in module.get_properties().values():
+    for prop in module.properties.values():
         if isinstance(prop, PSULoad):
             name = prop.name
             if name.endswith("out") or "out" in name:
@@ -56,7 +56,7 @@ async def handle_bus_error_counter(
     module: Module, message: BusErrorCounterStatusMessage
 ) -> None:
     """Route CAN bus error counters."""
-    for prop in module.get_properties().values():
+    for prop in module.properties.values():
         if isinstance(prop, BusErrorOff):
             await prop.update_value(message.bus_off_counter)
         elif isinstance(prop, BusErrorRx):

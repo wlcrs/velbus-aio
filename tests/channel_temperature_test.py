@@ -27,11 +27,6 @@ class TestTemperature:
         temp.thermostat = False
         assert temp.get_categories() == ["sensor"]
 
-    def test_get_class(self, mock_module, mock_writer):
-        """Test getting temperature class."""
-        temp = Temperature(mock_module, 1, "Temp", False, True, 0x01)
-        assert temp.get_class() == DEVICE_CLASS_TEMPERATURE
-
     def test_get_unit(self, mock_module, mock_writer):
         """Test getting temperature unit."""
         temp = Temperature(mock_module, 1, "Temp", False, True, 0x01)

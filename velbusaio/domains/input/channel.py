@@ -60,14 +60,14 @@ class Button(Channel):
 
     def supports_channel_enable(self) -> bool:
         """Return True when EEPROM enable/disable is available."""
-        return self.module.get_channel_enable_spec(self._num) is not None
+        return self.module.get_channel_enable_spec(self.channel_number) is not None
 
     async def get_channel_enabled(self, *, refresh: bool = False) -> bool | None:
         """Return EEPROM enable state (reaction time != disabled)."""
-        spec = self.module.get_channel_enable_spec(self._num)
+        spec = self.module.get_channel_enable_spec(self.channel_number)
         if spec is None:
             return None
-        memory = self.module.get_memory()
+        memory = self.module.memory
         if memory is None:
             return self.enabled
         value = await memory.read_byte(spec["address"], use_cache=not refresh)
@@ -79,12 +79,12 @@ class Button(Channel):
 
     async def set_channel_enabled(self, enabled: bool) -> None:
         """Enable or disable this channel via the reaction-time EEPROM byte."""
-        spec = self.module.get_channel_enable_spec(self._num)
+        spec = self.module.get_channel_enable_spec(self.channel_number)
         if spec is None:
             raise VelbusConfigError(
-                f"Channel {self._num} does not support enable/disable"
+                f"Channel {self.channel_number} does not support enable/disable"
             )
-        memory = self.module.get_memory()
+        memory = self.module.memory
         if memory is None:
             raise RuntimeError("Module memory backend is not initialized")
         current = await memory.read_byte(spec["address"])
@@ -112,7 +112,7 @@ class Button(Channel):
                 getter=self._get_name_value,
                 setter=self.set_name_persistent,
                 max_length=16,
-                channel=self._num,
+                channel=self.channel_number,
                 entity=False,
             ),
         ]
@@ -124,7 +124,7 @@ class Button(Channel):
                     kind="bool",
                     getter=self._get_enabled_value,
                     setter=self.set_channel_enabled,
-                    channel=self._num,
+                    channel=self.channel_number,
                 )
             )
         return params
@@ -153,8 +153,8 @@ class Button(Channel):
         if isinstance(state, str):
             state = ButtonLedState(state)
 
-        _mod_add = self._address
-        _chn_num = self._num - self.module.calc_channel_offset(_mod_add)
+        _mod_add = self.address
+        _chn_num = self.channel_number - self.module.calc_channel_offset(_mod_add)
         msg = self.create_message(_LED_STATE_MESSAGES[state], address=_mod_add)
         msg.leds = [_chn_num]
         await self.send_message(msg)
@@ -163,8 +163,8 @@ class Button(Channel):
 
     async def press(self) -> None:
         """Press the button."""
-        _mod_add = self._address
-        _chn_num = self._num - self.module.calc_channel_offset(_mod_add)
+        _mod_add = self.address
+        _chn_num = self.channel_number - self.module.calc_channel_offset(_mod_add)
         # send the just pressed
         msg = self.create_message(PushButtonStatusMessage, address=_mod_add)
         msg.closed = [_chn_num]
@@ -321,10 +321,6 @@ class SensorNumber(Channel):
     def get_categories(self) -> list[str]:
         """Return the categories for this channel."""
         return ["sensor"]
-
-    def get_class(self) -> None:
-        """Return the device class for this channel."""
-        return
 
     def get_unit(self) -> str | None:
         """Return the unit of measurement for this channel."""

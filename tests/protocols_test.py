@@ -144,14 +144,14 @@ async def test_loader_promotion_during_live_scan(mock_controller):
     from velbusaio.module import Module
 
     module = Module(1, 0x08, controller=mock_controller)
-    module._is_loaded = False
+    module._loaded = False
     btn = Button(module, 1, "Input 1", False, True, 1)
-    module._channels[1] = btn
+    module.channels[1] = btn
 
     # Before message: channel is Button (Pressable, not Counter)
-    assert isinstance(module.get_channels()[1], Button)
-    assert isinstance(module.get_channels()[1], Pressable)
-    assert not isinstance(module.get_channels()[1], Counter)
+    assert isinstance(module.channels[1], Button)
+    assert isinstance(module.channels[1], Pressable)
+    assert not isinstance(module.channels[1], Counter)
 
     # CounterStatusMessage arrives during loading phase
     c_status = CounterStatusMessage(1)
@@ -162,7 +162,7 @@ async def test_loader_promotion_during_live_scan(mock_controller):
     await module.on_message(c_status)
 
     # After message: channel is promoted to CounterChannel (Counter, HasUnit, not Pressable)
-    channel = module.get_channels()[1]
+    channel = module.channels[1]
     assert isinstance(channel, CounterChannel)
     assert isinstance(channel, Counter)
     assert isinstance(channel, HasUnit)
@@ -181,8 +181,8 @@ async def test_loader_detection_from_cache(mock_controller, tmp_path):
     counter = CounterChannel(module, 1, "Water Meter", False, True, 1)
     counter.set_unit("L/h")
     btn = Button(module, 2, "Kitchen Switch", False, True, 1)
-    module._channels[1] = counter
-    module._channels[2] = btn
+    module.channels[1] = counter
+    module.channels[2] = btn
 
     await save_module_cache(str(tmp_path), module)
 
@@ -190,10 +190,10 @@ async def test_loader_detection_from_cache(mock_controller, tmp_path):
         str(tmp_path), 1, controller=mock_controller
     )
     assert restored is not None
-    assert isinstance(restored._channels[1], CounterChannel)
-    assert isinstance(restored._channels[1], Counter)
-    assert restored._channels[1].get_unit() == "L"
-    assert isinstance(restored._channels[2], Button)
-    assert isinstance(restored._channels[2], Pressable)
-    assert not isinstance(restored._channels[2], Counter)
+    assert isinstance(restored.channels[1], CounterChannel)
+    assert isinstance(restored.channels[1], Counter)
+    assert restored.channels[1].get_unit() == "L"
+    assert isinstance(restored.channels[2], Button)
+    assert isinstance(restored.channels[2], Pressable)
+    assert not isinstance(restored.channels[2], Counter)
 

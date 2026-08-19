@@ -20,8 +20,8 @@ async def test_input_domain_push_button_status(mock_controller):
     module = Module(1, 0x08, controller=mock_controller)
     btn1 = Button(module, 1, "Button 1", False, True, 1)
     btn2 = Button(module, 2, "Button 2", False, True, 1)
-    module._channels[1] = btn1
-    module._channels[2] = btn2
+    module.channels[1] = btn1
+    module.channels[2] = btn2
 
     msg = PushButtonStatusMessage(1)
     msg.closed = [1]
@@ -37,7 +37,7 @@ async def test_input_domain_counter(mock_controller):
     """Test counter pulses and power/energy routing."""
     module = Module(1, 0x08, controller=mock_controller)
     counter = ButtonCounter(module, 1, "Counter 1", False, True, 1)
-    module._channels[1] = counter
+    module.channels[1] = counter
 
     c_status = CounterStatusMessage(1)
     c_status.channel = 1
@@ -63,7 +63,7 @@ async def test_input_domain_sensor_raw(mock_controller):
     """Test analog sensor raw value routing."""
     module = Module(1, 0x08, controller=mock_controller)
     sensor = Sensor(module, 1, "Sensor 1", False, True, 1)
-    module._channels[1] = sensor
+    module.channels[1] = sensor
 
     msg = SensorRawMessage(1)
     msg.sensor = 1

@@ -21,6 +21,7 @@ VMBGP4 = 0x20
 
 def _make_module(cache_dir: pathlib.Path) -> Module:
     ctrl = Mock()
+    ctrl.cache_dir = str(cache_dir)
     ctrl.get_cache_dir.return_value = str(cache_dir)
     module = Module(0x01, VMBGP4, controller=ctrl)
     module._log = logging.getLogger("velbus-module")
@@ -83,7 +84,7 @@ async def test_to_cache_name_falls_back_to_type_name(tmp_path):
     from velbusaio.module_cache import build_cache_dict
 
     module = _make_module(tmp_path)
-    module._spec = ModuleSpec(type_name="VMBDALI-20")
+    module.spec = ModuleSpec(type_name="VMBDALI-20")
     # _name is still the initial value (no name was ever assembled)
     assert not isinstance(module._name, str)
 
@@ -98,7 +99,7 @@ async def test_save_cache_persists_unloaded_module(tmp_path):
     from velbusaio.module_cache import save_module_cache
 
     module = _make_module(tmp_path)
-    module._spec = ModuleSpec(type_name="VMBDALI-20")
+    module.spec = ModuleSpec(type_name="VMBDALI-20")
     cfile = tmp_path / "1.json"
     assert not cfile.exists()
 
@@ -135,12 +136,13 @@ async def test_load_module_from_cache_constructs_module(tmp_path):
     from velbusaio.module_cache import load_module_from_cache, save_module_cache
 
     ctrl = Mock()
+    ctrl.cache_dir = str(tmp_path)
     ctrl.get_cache_dir.return_value = str(tmp_path)
     module = _make_module(tmp_path)
-    module._spec = ModuleSpec(type_name="VMBGP4")
-    module._name = "Living Room"
+    module.spec = ModuleSpec(type_name="VMBGP4")
+    module.name = "Living Room"
     await save_module_cache(str(tmp_path), module)
 
     loaded_mod = await load_module_from_cache(str(tmp_path), 1, controller=ctrl)
     assert loaded_mod is not None
-    assert loaded_mod.get_name() == "Living Room"
+    assert loaded_mod.name == "Living Room"

@@ -21,12 +21,10 @@ _CACHE_LOCK = asyncio.Lock()
 def build_cache_dict(module: Module) -> dict[str, Any]:
     """Build cache dictionary from module state."""
     d: dict[str, Any] = {
-        "name": (
-            module._name if isinstance(module._name, str) else module.get_type_name()  # noqa: SLF001
-        ),
-        "type": module.get_type(),
-        "type_name": module.get_type_name(),
-        "serial": module.get_serial(),
+        "name": module.name or module.type_name,
+        "type": module.type,
+        "type_name": module.type_name,
+        "serial": module.serial,
         "memory_map_version": module.memory_map_version,
         "build_year": module.build_year,
         "build_week": module.build_week,
@@ -34,11 +32,11 @@ def build_cache_dict(module: Module) -> dict[str, Any]:
         "sub_addresses": {},
         "properties": {},
     }
-    for chan_num, chan in module._channels.items():  # noqa: SLF001
+    for chan_num, chan in module.channels.items():
         d["channels"][chan_num] = chan.to_cache()
-    for sub_num, address in module._sub_address.items():  # noqa: SLF001
+    for sub_num, address in module.sub_addresses.items():
         d["sub_addresses"][sub_num] = address
-    for prop_num, prop in module._properties.items():  # noqa: SLF001
+    for prop_num, prop in module.properties.items():
         d["properties"][prop_num] = prop.to_cache()
     return d
 
@@ -71,7 +69,7 @@ async def save_module_cache(
     """Save a Module's state to disk cache."""
     await save_cache(
         cache_dir,
-        module.get_address(),
+        module.address,
         build_cache_dict(module),
         lock=lock,
     )
@@ -134,7 +132,7 @@ async def load_module_from_cache(
     )
 
     if "name" in cache and isinstance(cache["name"], str) and cache["name"] != "":
-        module._name = cache["name"]  # noqa: SLF001
+        module.name = cache["name"]
 
     if "sub_addresses" in cache:
         for num, addr in cache["sub_addresses"].items():
@@ -143,9 +141,9 @@ async def load_module_from_cache(
     if "channels" in cache:
         for num, chan in cache["channels"].items():
             chan_num = int(num)
-            if chan_num in module._channels:  # noqa: SLF001
+            if chan_num in module.channels:
                 chan_type = chan.get("type")
-                existing_chan = module._channels[chan_num]  # noqa: SLF001
+                existing_chan = module.channels[chan_num]
                 if chan_type in ("CounterChannel", "ButtonCounter") or "Unit" in chan:
                     from velbusaio.channels import CounterChannel  # noqa: PLC0415
 
@@ -155,12 +153,12 @@ async def load_module_from_cache(
                             num=chan_num,
                             name=chan.get("name", existing_chan.name),
                             nameEditable=getattr(existing_chan, "nameEditable", True),
-                            subDevice=chan.get("subdevice", existing_chan.is_sub_device()),
-                            address=getattr(existing_chan, "_address", module.get_address()),
+                            subDevice=chan.get("subdevice", existing_chan.sub_device),
+                            address=getattr(existing_chan, "address", module.address),
                         )
-                        module._channels[chan_num] = counter  # noqa: SLF001
+                        module.channels[chan_num] = counter
                     if "Unit" in chan:
-                        module._channels[chan_num].set_unit(chan["Unit"])  # noqa: SLF001
+                        module.channels[chan_num].set_unit(chan["Unit"])
                 elif chan_type == "Button":
                     from velbusaio.channels import Button, CounterChannel  # noqa: PLC0415
 
@@ -170,10 +168,10 @@ async def load_module_from_cache(
                             num=chan_num,
                             name=chan.get("name", existing_chan.name),
                             nameEditable=getattr(existing_chan, "nameEditable", True),
-                            subDevice=chan.get("subdevice", existing_chan.is_sub_device()),
-                            address=getattr(existing_chan, "_address", module.get_address()),
+                            subDevice=chan.get("subdevice", existing_chan.sub_device),
+                            address=getattr(existing_chan, "address", module.address),
                         )
-                        module._channels[chan_num] = btn  # noqa: SLF001
-                module._channels[chan_num].name = chan.get("name", "")  # noqa: SLF001
+                        module.channels[chan_num] = btn
+                module.channels[chan_num].name = chan.get("name", "")
 
     return module

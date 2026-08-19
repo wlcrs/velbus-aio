@@ -37,34 +37,34 @@ _LOG = logging.getLogger("velbus-input")
 
 def _get_button(module: Module, raw_channel: int | str) -> Button | None:
     channel_id = module.map_channel_number(raw_channel)
-    chan = module.get_channels().get(channel_id)
+    chan = module.channels.get(channel_id)
     if isinstance(chan, Button) and not isinstance(chan, Sensor):
         return chan
     if chan is None or not isinstance(chan, CounterChannel):
         _LOG.warning(
-            f"Received button message for non-existent button channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+            f"Received button message for non-existent button channel {raw_channel} (mapped: {channel_id}) on module {module.address}"
         )
     return None
 
 
 def _get_counter(module: Module, raw_channel: int | str) -> CounterChannel | None:
     channel_id = module.map_channel_number(raw_channel)
-    chan = module.get_channels().get(channel_id)
+    chan = module.channels.get(channel_id)
     if isinstance(chan, CounterChannel):
         return chan
-    if not module.is_loaded() and chan is not None:
+    if not module.is_loaded and chan is not None:
         counter = CounterChannel(
             module=module,
-            num=chan.get_channel_number(),
+            num=chan.channel_number,
             name=chan.name,
             nameEditable=getattr(chan, "nameEditable", True),
-            subDevice=chan.is_sub_device(),
-            address=getattr(chan, "_address", module.get_address()),
+            subDevice=chan.sub_device,
+            address=getattr(chan, "address", module.address),
         )
-        module._channels[channel_id] = counter
+        module.channels[channel_id] = counter
         return counter
     _LOG.warning(
-        f"Received counter message for non-existent counter channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+        f"Received counter message for non-existent counter channel {raw_channel} (mapped: {channel_id}) on module {module.address}"
     )
     return None
 
@@ -72,12 +72,12 @@ def _get_counter(module: Module, raw_channel: int | str) -> CounterChannel | Non
 def _get_sensor(module: Module, raw_channel: int | str) -> Sensor | None:
     channel_id = module.map_channel_number(raw_channel)
     sensors = {
-        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Sensor)
+        num: ch for num, ch in module.channels.items() if isinstance(ch, Sensor)
     }
     sensor = sensors.get(channel_id)
     if sensor is None:
         _LOG.warning(
-            f"Received sensor message for non-existent sensor channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+            f"Received sensor message for non-existent sensor channel {raw_channel} (mapped: {channel_id}) on module {module.address}"
         )
     return sensor
 
@@ -135,7 +135,7 @@ async def _update_buttons_from_list(
 async def _update_selected_program(module: Module, selected_program: int) -> None:
     """Update SelectedProgram property from numeric code if present."""
     prog_prop = next(
-        (p for p in module.get_properties().values() if isinstance(p, SelectedProgram)),
+        (p for p in module.properties.values() if isinstance(p, SelectedProgram)),
         None,
     )
     if prog_prop is not None:
@@ -146,7 +146,7 @@ async def _update_selected_program(module: Module, selected_program: int) -> Non
 async def _update_light_value(module: Module, light_value: float) -> None:
     """Update LightValue property if present."""
     light_prop = next(
-        (p for p in module.get_properties().values() if isinstance(p, LightValue)),
+        (p for p in module.properties.values() if isinstance(p, LightValue)),
         None,
     )
     if light_prop is not None:

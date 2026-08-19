@@ -11,8 +11,8 @@ class MockWriter:
 class MockController:
     """Mock controller for testing."""
 
-    def connected(self):
-        return True
+    connected = True
+    cache_dir = None
 
     def get_cache_dir(self):
         return None
@@ -46,4 +46,4 @@ async def test_vmbdali_loads_and_has_channels():
         controller=MockController(),
     )
 
-    assert len(module._channels) > 0
+    assert len(module.channels) > 0

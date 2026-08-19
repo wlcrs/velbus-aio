@@ -22,12 +22,12 @@ _LOG = logging.getLogger("velbus-cover")
 def _get_blind(module: Module, raw_channel: int | str) -> Blind | None:
     channel_id = module.map_channel_number(raw_channel)
     blinds = {
-        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Blind)
+        num: ch for num, ch in module.channels.items() if isinstance(ch, Blind)
     }
     blind = blinds.get(channel_id)
     if blind is None:
         _LOG.warning(
-            f"Received blind status for non-existent blind channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+            f"Received blind status for non-existent blind channel {raw_channel} (mapped: {channel_id}) on module {module.address}"
         )
     return blind
 

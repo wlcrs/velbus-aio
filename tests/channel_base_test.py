@@ -11,27 +11,27 @@ class TestChannel:
     def test_init_with_editable_name(self, mock_module):
         """Test channel initialization with editable name."""
         channel = Channel(mock_module, 1, "Test Channel", True, True, 0x01)
-        assert channel.get_channel_number() == 1
+        assert channel.channel_number == 1
         assert channel.name == "Test Channel"
         assert channel.default_name == "Test Channel"
-        assert channel.is_sub_device()
+        assert channel.sub_device
 
     def test_init_with_non_editable_name(self, mock_module):
         """Test channel initialization with non-editable name."""
         channel = Channel(
             mock_module, 1, "Test Channel", False, False, 0x01
         )
-        assert not channel.is_sub_device()
+        assert not channel.sub_device
 
     def test_module_property_access(self, mock_module):
         """Test accessing module via property."""
         channel = Channel(mock_module, 1, "Test", False, False, 0x01)
         assert channel.module is mock_module
-        assert channel.module.get_type() == 0x01
-        assert channel.module.get_type_name() == "TestModule"
-        assert channel.module.get_serial() == "12345"
-        assert channel.module.get_sw_version() == "1.0.0"
-        assert channel.module.get_address() == 0x01
+        assert channel.module.type == 0x01
+        assert channel.module.type_name == "TestModule"
+        assert channel.module.serial == "12345"
+        assert channel.module.sw_version == "1.0.0"
+        assert channel.module.address == 0x01
 
     def test_get_full_name_subdevice(self, mock_module):
         """Test getting full name for subdevice."""
@@ -73,7 +73,7 @@ class TestChannel:
         channel = Channel(mock_module, 1, "Test", False, False, 0x01)
         info = channel.get_channel_info()
         assert info["type"] == "Channel"
-        assert info["num"] == 1
+        assert info["channel_number"] == 1
         assert info["name"] == "Test"
         assert "_module" not in info
         assert "_writer" not in info
@@ -206,7 +206,7 @@ class TestChannel:
         from unittest.mock import AsyncMock
 
         memory = AsyncMock()
-        mock_module.get_memory.return_value = memory
+        mock_module.memory = memory
         mock_module._channel_name_range.return_value = (0x0100, 16)
         mock_module._controller.save_module_cache = AsyncMock()
 

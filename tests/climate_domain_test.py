@@ -29,9 +29,9 @@ async def test_climate_domain_status_routing(mock_controller):
     heater_channel = ThermostatChannel(module, 35, "Heater", False, True, 1)
     boost_channel = ThermostatChannel(module, 36, "Boost", False, True, 1)
 
-    module._channels[34] = temp_channel
-    module._channels[35] = heater_channel
-    module._channels[36] = boost_channel
+    module.channels[34] = temp_channel
+    module.channels[35] = heater_channel
+    module.channels[36] = boost_channel
 
     # Simulate TempSensorStatus message
     status_msg = TempSensorStatusMessage(1)
@@ -57,7 +57,7 @@ async def test_climate_domain_sensor_temperature(mock_controller):
     module = Module(1, 0x34, controller=mock_controller)
 
     temp_channel = Temperature(module, 34, "Temperature", False, True, 1)
-    module._channels[34] = temp_channel
+    module.channels[34] = temp_channel
 
     msg = SensorTemperatureMessage(1)
     msg.cur = 22.25
@@ -76,7 +76,7 @@ async def test_climate_domain_settings_parts(mock_controller):
     """Test routing TempSensorSettingsPart1-4 directly to Temperature."""
     module = Module(1, 0x34, controller=mock_controller)
     temp_channel = Temperature(module, 34, "Temperature", False, True, 1)
-    module._channels[34] = temp_channel
+    module.channels[34] = temp_channel
 
     part1 = TempSensorSettingsPart1(1)
     part1.comfort_heating = 21.5

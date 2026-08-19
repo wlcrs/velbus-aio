@@ -13,11 +13,6 @@ class TestSensorNumber:
         sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
         assert sensor.get_categories() == ["sensor"]
 
-    def test_get_class(self, mock_module, mock_writer):
-        """Test getting sensor class."""
-        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
-        assert sensor.get_class() is None
-
     @pytest.mark.asyncio
     async def test_get_unit(self, mock_module, mock_writer):
         """Test getting sensor unit."""

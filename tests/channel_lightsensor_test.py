@@ -19,4 +19,3 @@ class TestLightSensor:
         sensor = LightValue(mock_module, "Light")
         await sensor.update_value(125.5)
         assert sensor.value == 125.5
-        assert sensor.get_state() == 125.5

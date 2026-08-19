@@ -63,19 +63,20 @@ class VmbDali(Module):
         )
         self.group_members: dict[int, set[int]] = {}
 
-    def get_initial_timeout(self) -> int:
+    @property
+    def initial_timeout(self) -> int:
         """Get initial timeout for loading this module."""
         return 100000
 
     def _initialize_channels(self) -> None:
         for chan in range(1, 64 + 1):
-            self._channels[chan] = Channel(
+            self.channels[chan] = Channel(
                 module=self,
                 num=chan,
                 name="placeholder",
                 nameEditable=True,
                 subDevice=True,
-                address=self._address,
+                address=self.address,
             )
 
     async def _request_channel_name(self) -> None:
@@ -84,9 +85,9 @@ class VmbDali(Module):
 
     async def _request_dali_channels(self) -> None:
         msg_type = commandRegistry.get_command(
-            DALI_DEVICE_SETTINGS_REQUEST_COMMAND_CODE, self.get_type()
+            DALI_DEVICE_SETTINGS_REQUEST_COMMAND_CODE, self.type
         )
-        msg: DaliDeviceSettingsRequest = msg_type(self._address)
+        msg: DaliDeviceSettingsRequest = msg_type(self.address)
         msg.priority = PRIORITY_LOW
         msg.channel = 81  # all
         msg.settings = None  # all
@@ -97,20 +98,20 @@ class VmbDali(Module):
         if isinstance(message, DaliDeviceSettingMsg):
             if isinstance(message.data, DaliDeviceTypeMsg):
                 if message.data.device_type == DaliDeviceType.NoDevicePresent:
-                    if message.channel in self._channels:
-                        del self._channels[message.channel]
+                    if message.channel in self.channels:
+                        del self.channels[message.channel]
                 # Any present DALI device (LedModule, Dimmer, and the other
                 # lamp types) is exposed as a dimmable channel. Only
                 # NoDevicePresent slots are removed above.
-                elif self._channels.get(message.channel).__class__ != Dimmer:
+                elif self.channels.get(message.channel).__class__ != Dimmer:
                     # New or changed type, replace channel:
-                    self._channels[message.channel] = Dimmer(
+                    self.channels[message.channel] = Dimmer(
                         self,
                         message.channel,
                         "",
                         True,
                         True,
-                        self._address,
+                        self.address,
                         slider_scale=254,
                     )
                     await self._request_single_channel_name(message.channel)
@@ -141,7 +142,7 @@ class VmbDali(Module):
                     for chan in self.group_members.get(group_num, []):
                         await self._update_channel(chan, {"state": dim_value})
                 else:  # broadcast
-                    for channel_obj in self._channels.values():
+                    for channel_obj in self.channels.values():
                         setattr(channel_obj, "state", dim_value)
                         await channel_obj.maybe_status_update()
 
@@ -162,11 +163,11 @@ class VmbDali(Module):
 
     async def _request_single_channel_name(self, channel_num: int) -> None:
         msg_type = commandRegistry.get_command(
-            CHANNEL_NAME_REQUEST_COMMAND_CODE, self.get_type()
+            CHANNEL_NAME_REQUEST_COMMAND_CODE, self.type
         )
         if msg_type is None:
             return
-        msg = msg_type(self._address)
+        msg = msg_type(self.address)
         msg.priority = PRIORITY_LOW
         msg.channels = channel_num
         await self.send_message(msg)

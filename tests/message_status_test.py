@@ -462,7 +462,7 @@ class TestPushButtonStatusMessage:
         assert msg.closed == [1]
         assert msg.opened == [2]
         assert msg.closed_long == [3]
-        assert msg.get_channels() == [1, 2]
+        assert msg.channels == [1, 2]
 
         assert msg.data_to_binary() == bytes([0, 1, 2, 4])
 
@@ -512,7 +512,6 @@ class TestCounterStatusMessage:
         assert msg.pulses == 100
         assert msg.counter == 100
         assert msg.delay == 10
-        assert msg.get_channels() == 2
 
 
 class TestCounterValueMessage:
@@ -529,7 +528,6 @@ class TestCounterValueMessage:
         assert msg.channel == 2
         assert msg.power == 100
         assert msg.energy == 5
-        assert msg.get_channels() == 2
 
 
 class TestKwhStatusMessage:
@@ -548,7 +546,6 @@ class TestKwhStatusMessage:
         assert msg.counter == 100
         assert msg.kwh == 1.0
         assert msg.delay == 10
-        assert msg.get_channels() == 2
 
 
 class TestPsuLoadMessage:

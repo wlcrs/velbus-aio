@@ -21,13 +21,12 @@ from velbusaio.module import Module
 def test_module_serial_is_normalized(serial, expected):
     m = Module(1, 0x0E, controller=Mock(), serial=serial)
 
-    assert m.get_serial() == expected
     assert m.serial == expected
     if expected is not None:
-        assert isinstance(m.get_serial(), str)
+        assert isinstance(m.serial, str)
 
 
 def test_module_factory_serial_is_normalized():
     m = Module.factory(1, 0x0E, controller=Mock(), serial=12345)
 
-    assert m.get_serial() == "12345"
+    assert m.serial == "12345"

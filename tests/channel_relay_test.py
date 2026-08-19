@@ -124,22 +124,20 @@ class TestRelay:
 
     def test_get_config_parameters_gated_by_commands(self, mock_module, mock_writer):
         """Test force/inhibit params are only advertised when supported."""
+        mock_module.action_tables = {}
         relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
 
-        with patch.object(relay, "get_action_table", return_value=None):
-            mock_module.has_command.side_effect = lambda code: (
-                code in {0x12, 0x14, 0x16}
-            )
-            keys = {param.key for param in relay.get_config_parameters()}
-            assert keys == {"name", "inhibit", "forced_on", "forced_off"}
+        mock_module.has_command.side_effect = lambda code: (
+            code in {0x12, 0x14, 0x16}
+        )
+        keys = {param.key for param in relay.get_config_parameters()}
+        assert keys == {"name", "inhibit", "forced_on", "forced_off"}
 
-        with patch.object(relay, "get_action_table", return_value=None):
-            mock_module.has_command.side_effect = lambda code: code == 0x12
-            keys = {param.key for param in relay.get_config_parameters()}
-            assert keys == {"name", "forced_off"}
+        mock_module.has_command.side_effect = lambda code: code == 0x12
+        keys = {param.key for param in relay.get_config_parameters()}
+        assert keys == {"name", "forced_off"}
 
-        with patch.object(relay, "get_action_table", return_value=None):
-            mock_module.has_command.side_effect = None
-            mock_module.has_command.return_value = False
-            keys = {param.key for param in relay.get_config_parameters()}
-            assert keys == {"name"}
+        mock_module.has_command.side_effect = None
+        mock_module.has_command.return_value = False
+        keys = {param.key for param in relay.get_config_parameters()}
+        assert keys == {"name"}

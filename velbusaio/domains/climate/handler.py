@@ -18,12 +18,12 @@ if TYPE_CHECKING:
 
 
 def _get_temp_channels(module: Module) -> list[Temperature]:
-    return [ch for ch in module.get_channels().values() if isinstance(ch, Temperature)]
+    return [ch for ch in module.channels.values() if isinstance(ch, Temperature)]
 
 
 def _get_thermostat_channels(module: Module) -> list[ThermostatChannel]:
     return [
-        ch for ch in module.get_channels().values() if isinstance(ch, ThermostatChannel)
+        ch for ch in module.channels.values() if isinstance(ch, ThermostatChannel)
     ]
 
 

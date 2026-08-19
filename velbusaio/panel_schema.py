@@ -161,7 +161,7 @@ def get_module_type_schema(type_id: int) -> dict[str, Any]:
 
 async def get_module_instance_data(module: Module) -> dict[str, Any]:
     """Return live module values for the config panel."""
-    channels = module.get_channels()
+    channels = module.channels
     channel_data: dict[str, Any] = {}
     for channel_num, channel in channels.items():
         entry: dict[str, Any] = {
@@ -176,7 +176,7 @@ async def get_module_instance_data(module: Module) -> dict[str, Any]:
         elif hasattr(channel, "is_enabled"):
             entry["enabled"] = channel.is_enabled()
         table = (
-            channel.get_action_table() if hasattr(channel, "get_action_table") else None
+            channel.action_table if hasattr(channel, "action_table") else None
         )
         if table is not None and table.noc_address is not None:
             normal_closed = await channel.get_normal_closed()
@@ -185,19 +185,19 @@ async def get_module_instance_data(module: Module) -> dict[str, Any]:
         channel_data[str(channel_num)] = entry
 
     properties: dict[str, Any] = {}
-    for key, prop in module.get_properties().items():
+    for key, prop in module.properties.items():
         if hasattr(prop, "value"):
             properties[key] = prop.value
         elif hasattr(prop, "get_state"):
             properties[key] = prop.get_state()
 
     return {
-        "address": module.get_addresses()[0],
-        "name": module.get_name(),
-        "type_id": module.get_type(),
-        "type_name": module.get_type_name(),
-        "serial": module.get_serial(),
-        "sw_version": module.get_sw_version(),
+        "address": module.addresses[0],
+        "name": module.name,
+        "type_id": module.type,
+        "type_name": module.type_name,
+        "serial": module.serial,
+        "sw_version": module.sw_version,
         "channels": channel_data,
         "properties": properties,
     }

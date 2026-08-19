@@ -227,7 +227,19 @@ class Temperature(Channel):
     def _get_module_data(self) -> dict[str, Any]:
         if self.module is None:
             return {}
-        return getattr(self.module, "_data", {})
+        spec = getattr(self.module, "spec", None)
+        if spec is not None and hasattr(spec, "type_name"):
+            return {
+                "Type": spec.type_name,
+                "TemperatureChannel": spec.temperature_channel,
+                "CommandToClass": {
+                    k: v.__name__ if hasattr(v, "__name__") else str(v)
+                    for k, v in spec.command_to_class.items()
+                },
+            }
+        if isinstance(spec, dict):
+            return spec
+        return getattr(self.module, "_data", {}) or {}
 
     def supports_temp_settings(self) -> bool:
         return module_supports_temp_settings(self._get_module_data())
@@ -415,16 +427,16 @@ class Temperature(Channel):
 
     async def _write_settings_part(self, part: int) -> None:
         if part == 1:
-            msg = TempSensorSettingsPart1(self._address)
+            msg = TempSensorSettingsPart1(self.address)
             for name in _PART1_FIELDS:
                 setattr(msg, name, self._settings.get(name, 0))
         elif part == 2:
-            msg = TempSensorSettingsPart2(self._address)
+            msg = TempSensorSettingsPart2(self.address)
             for name in _PART2_FIELDS:
                 setattr(msg, name, self._settings.get(name, 0))
         elif part == 3:
             msg = TempSensorSettingsPart3(
-                self._address, layout=self.get_settings_layout()
+                self.address, layout=self.get_settings_layout()
             )
             for name in _PART3_FIELDS:
                 setattr(
@@ -434,7 +446,7 @@ class Temperature(Channel):
                 )
         elif part == 4:
             msg = TempSensorSettingsPart4(
-                self._address, layout=self.get_settings_layout()
+                self.address, layout=self.get_settings_layout()
             )
             for name in _PART4_FIELDS:
                 setattr(msg, name, self._settings.get(name, 0))
@@ -443,7 +455,7 @@ class Temperature(Channel):
         await self.send_message(msg)
 
     def get_config_parameters(self) -> list[ConfigParameter]:
-        """Return discoverable CONFIG parameters for temperature presets."""
+        """Return discoverable CONFIG parameters for this thermostat."""
         params: list[ConfigParameter] = []
         for key, label, min_value, max_value in _CONFIG_NUMBER_SPECS:
             part = _FIELD_PART[key]
@@ -458,7 +470,7 @@ class Temperature(Channel):
                     setter=self._make_config_setter(key),
                     min_value=min_value,
                     max_value=max_value,
-                    channel=self._num,
+                    channel=self.channel_number,
                     metadata={
                         "unit": (
                             "min"
@@ -521,10 +533,6 @@ class Temperature(Channel):
         if self.thermostat:
             return ["sensor", "climate"]
         return ["sensor"]
-
-    def get_class(self) -> str:
-        """Return the device class for this channel."""
-        return DEVICE_CLASS_TEMPERATURE
 
     def get_unit(self) -> str:
         """Return the unit of measurement for this channel."""
