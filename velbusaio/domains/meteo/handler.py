@@ -19,9 +19,7 @@ _LOG = logging.getLogger("velbus-meteo")
 async def handle_meteo_raw(module: Module, message: MeteoRawMessage) -> None:
     """Route MeteoRawMessage across channels 11 (rain), 12 (light), 13 (wind)."""
     sensors = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, Sensor)
+        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Sensor)
     }
     if rain_ch := sensors.get(11):
         await rain_ch.update_raw(message.rain)

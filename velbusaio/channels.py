@@ -5,11 +5,11 @@ author: Maikel Punie <maikel.punie@gmail.com>
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 import string
 from typing import TYPE_CHECKING, Any
 
 from velbusaio.baseItem import BaseItem
+from velbusaio.config import decode_name, encode_name
 from velbusaio.message import Message
 
 if TYPE_CHECKING:
@@ -32,35 +32,20 @@ class Channel(BaseItem):
         name: str,
         nameEditable: bool,
         subDevice: bool,
-        writer: Callable[[Message], Awaitable[None]],
         address: int,
     ):
         """Initialize the channel."""
-        super().__init__(module, name, writer)
+        super().__init__(module, name)
         self._num = num
         self._subDevice = subDevice
-        if not nameEditable:
-            self._is_loaded = True
-        else:
-            self._is_loaded = False
         self._address = address
         self._name_parts = {}
 
     def get_identifier(self) -> str:
         """Return the identifier of the entity."""
         if not self.is_sub_device():
-            return str(self.get_module_address())
-        return f"{self.get_module_address()}-{self.get_channel_number()}"
-
-    def get_module_address(self, chan_type: str = "") -> int:
-        """Return (sub)module address for channel."""
-        if chan_type == "Button" and self._num > 24:
-            return self._module.get_addresses()[3]
-        if chan_type == "Button" and self._num > 16:
-            return self._module.get_addresses()[2]
-        if chan_type == "Button" and self._num > 8:
-            return self._module.get_addresses()[1]
-        return self._address
+            return str(self._address)
+        return f"{self._address}-{self.get_channel_number()}"
 
     def get_channel_number(self) -> int:
         """Return channel number."""
@@ -73,15 +58,7 @@ class Channel(BaseItem):
     ) -> M:
         """Create the correct module-specific Message variant for this channel."""
         target_addr = self._address if address is None else address
-        return self._module.create_message(message_cls, address=target_addr)
-
-    def set_loaded(self, loaded: bool) -> None:
-        """Set if this channel is loaded."""
-        self._is_loaded = loaded
-
-    def is_loaded(self) -> bool:
-        """Is this channel loaded."""
-        return self._is_loaded
+        return self.module.create_message(message_cls, address=target_addr)
 
     def is_counter_channel(self) -> bool:
         """Return if this channel is a counter channel."""
@@ -101,11 +78,10 @@ class Channel(BaseItem):
 
     def set_name_char(self, pos: int, char: int) -> None:
         """Set a char of the channel name."""
-        self._is_loaded = True
         self._name_parts = {}
-        while len(self._name) < int(pos):
-            self._name += " "
-        self._name = self._name[: int(pos)] + chr(char) + self._name[int(pos) + 1 :]
+        while len(self.name) < int(pos):
+            self.name += " "
+        self.name = self.name[: int(pos)] + chr(char) + self.name[int(pos) + 1 :]
 
     def set_name_part(self, part: int, name: str) -> bool:
         """Set a part of the channel name. Returns True if name is now complete."""
@@ -118,23 +94,27 @@ class Channel(BaseItem):
     def _generate_name(self) -> None:
         """Generate the channel name if all 3 parts are received."""
         name = self._name_parts[1] + self._name_parts[2] + self._name_parts[3]
-        self._name = "".join(filter(lambda x: x in string.printable, name))
-        self._is_loaded = True
+        self.name = "".join(filter(lambda x: x in string.printable, name))
         self._name_parts = {}
 
-    def __getstate__(self):
-        """Get channel state for pickling."""
-        d = self.__dict__
-        return {
-            k: d[k]
-            for k in d
-            if k not in {"_writer", "_on_status_update", "_name_parts"}
-        }
+    async def set_name_persistent(self, name: str) -> None:
+        """Write channel name into module EEPROM and update the local name."""
+        memory = self.module.get_memory()
+        if memory is None:
+            raise RuntimeError("Module memory backend is not initialized")
+        name_range = self.module._channel_name_range(self._num)
+        if name_range is None:
+            raise ValueError(f"Channel {self._num} has no name memory range")
+        start, length = name_range
+        encoded = encode_name(name, length)
+        await memory.write_bytes(start, encoded)
+        self.name = decode_name(encoded)
+        await self.module._controller.save_module_cache(self.module)  # noqa: SLF001
 
     def to_cache(self) -> dict:
         """Get channel state for caching."""
         dst = {
-            "name": self._name,
+            "name": self.name,
             "type": type(self).__name__,
             "subdevice": self._subDevice,
         }
@@ -142,17 +122,11 @@ class Channel(BaseItem):
             dst["Unit"] = self.Unit
         return dst
 
-    def __setstate__(self, state):
-        """Restore channel from cached state."""
-        self.__dict__.update(state)
-        self._on_status_update = []
-        self._name_parts = {}
-
     def __repr__(self) -> str:
         """Representation of this channel."""
         items = []
         for k, v in self.__dict__.items():
-            if k not in ["_module", "_writer", "_name_parts", "_class"]:
+            if k not in ["module", "_writer", "_name_parts", "_class"]:
                 items.append(f"{k} = {v!r}")
         return "{}[{}]".format(type(self), ", ".join(items))
 
@@ -165,7 +139,13 @@ class Channel(BaseItem):
         data = {}
         data["type"] = self.__class__.__name__
         for key, value in self.__dict__.items():
-            if key not in ["_module", "_writer", "_name_parts", "_on_status_update", "_is_dirty"]:
+            if key not in [
+                "_module",
+                "_writer",
+                "_name_parts",
+                "_on_status_update",
+                "_is_dirty",
+            ]:
                 data[key.lstrip("_")] = value
         return data
 
@@ -208,7 +188,7 @@ class Channel(BaseItem):
 
     def get_action_table(self):
         """Return this channel's action table, if available."""
-        return self._module.get_action_table(self._num)
+        return self.module.get_action_table(self._num)
 
     async def get_actions(
         self, *, refresh: bool = False, include_empty: bool = False
@@ -275,17 +255,25 @@ class Channel(BaseItem):
         )
 
 
-# Re-export domain channels
-from velbusaio.domains.climate.channel import Temperature, ThermostatChannel
-from velbusaio.domains.cover.channel import Blind, BlindState
-from velbusaio.domains.input.channel import (
-    Button,
-    ButtonCounter,
-    ButtonLedState,
-    Sensor,
-    SensorNumber,
-)
-from velbusaio.domains.lighting.channel import Dimmer, EdgeLit, Relay
+def __getattr__(name: str) -> Any:
+    if name in ("Temperature", "ThermostatChannel"):
+        import velbusaio.domains.climate.channel as mod  # noqa: PLC0415
+
+        return getattr(mod, name)
+    if name in ("Blind", "BlindState"):
+        import velbusaio.domains.cover.channel as mod  # noqa: PLC0415
+
+        return getattr(mod, name)
+    if name in ("Button", "ButtonCounter", "ButtonLedState", "Sensor", "SensorNumber"):
+        import velbusaio.domains.input.channel as mod  # noqa: PLC0415
+
+        return getattr(mod, name)
+    if name in ("Dimmer", "EdgeLit", "Relay"):
+        import velbusaio.domains.lighting.channel as mod  # noqa: PLC0415
+
+        return getattr(mod, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "Blind",

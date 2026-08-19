@@ -16,13 +16,13 @@ class TestBlind:
 
     def test_get_categories(self, mock_module, mock_writer):
         """Test blind categories."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         assert blind.get_categories() == ["cover"]
 
     @pytest.mark.asyncio
     async def test_position(self, mock_module, mock_writer):
         """Test blind position attribute."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         blind.position = 50
         await blind.maybe_status_update()
         assert blind.position == 50
@@ -30,7 +30,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_state(self, mock_module, mock_writer):
         """Test blind state attribute and update_status."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         await blind.update_status(0x01, 50)
         assert blind.state == BlindState.OPENING
         assert blind.position == 50
@@ -38,7 +38,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_is_opening(self, mock_module, mock_writer):
         """Test checking if blind is opening."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         blind.state = BlindState.OPENING
         await blind.maybe_status_update()
         assert blind.is_opening()
@@ -48,7 +48,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_is_closing(self, mock_module, mock_writer):
         """Test checking if blind is closing."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         blind.state = BlindState.CLOSING
         await blind.maybe_status_update()
         assert blind.is_closing()
@@ -58,7 +58,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_is_stopped(self, mock_module, mock_writer):
         """Test checking if blind is stopped."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         blind.state = BlindState.STOPPED
         await blind.maybe_status_update()
         assert blind.is_stopped()
@@ -68,7 +68,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_is_closed_with_position(self, mock_module, mock_writer):
         """Test checking if blind is closed when position is known."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         blind.position = 100
         await blind.maybe_status_update()
         assert blind.is_closed()
@@ -79,13 +79,13 @@ class TestBlind:
 
     def test_is_closed_without_position(self, mock_module, mock_writer):
         """Test checking if blind is closed when position is unknown."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         assert blind.is_closed() is None
 
     @pytest.mark.asyncio
     async def test_is_open_with_position(self, mock_module, mock_writer):
         """Test checking if blind is open when position is known."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         blind.position = 0
         await blind.maybe_status_update()
         assert blind.is_open()
@@ -96,13 +96,13 @@ class TestBlind:
 
     def test_is_open_without_position(self, mock_module, mock_writer):
         """Test checking if blind is open when position is unknown."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         assert blind.is_open() is None
 
     @pytest.mark.asyncio
     async def test_support_position(self, mock_module, mock_writer):
         """Test checking if position is supported."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         assert not blind.support_position()
 
         blind.position = 50
@@ -112,7 +112,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_open(self, mock_module, mock_writer):
         """Test opening blind."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         await blind.open()
 
         mock_writer.assert_called_once()
@@ -123,7 +123,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_close(self, mock_module, mock_writer):
         """Test closing blind."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         await blind.close()
 
         mock_writer.assert_called_once()
@@ -134,7 +134,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_stop(self, mock_module, mock_writer):
         """Test stopping blind."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         await blind.stop()
 
         mock_writer.assert_called_once()
@@ -145,7 +145,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_set_position(self, mock_module, mock_writer):
         """Test setting blind position."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         await blind.set_position(50)
 
         mock_writer.assert_called_once()
@@ -157,7 +157,7 @@ class TestBlind:
     @pytest.mark.asyncio
     async def test_set_position_fully_closed(self, mock_module, mock_writer):
         """Test setting blind position to fully closed uses close command."""
-        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        blind = Blind(mock_module, 1, "Blind", False, True, 0x01)
         await blind.set_position(100)
 
         mock_writer.assert_called_once()

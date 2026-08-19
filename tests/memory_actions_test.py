@@ -515,7 +515,7 @@ class TestActionTable:
             "enabled_value": 0x05,
         }
         module.get_memory.return_value = backend
-        button = Button(module, 1, "PB1", True, False, writer, 0x16)
+        button = Button(module, 1, "PB1", True, False, 0x16)
 
         assert await button.get_channel_enabled(refresh=True) is True
         await button.set_channel_enabled(False)

@@ -14,6 +14,15 @@ class MockController:
     def connected(self):
         return True
 
+    def get_cache_dir(self):
+        return None
+
+    async def _on_modules_loaded(self, module):
+        pass
+
+    async def send(self, data):
+        pass
+
     def _add_on_connext_callback(self, callback):
         pass
 
@@ -34,10 +43,7 @@ async def test_vmbdali_loads_and_has_channels():
     module = VmbDali(
         module_address,
         dali_type,
+        controller=MockController(),
     )
-    writer = MockWriter()
-    await module.initialize(writer, MockController())
-
-    await module.load()
 
     assert len(module._channels) > 0

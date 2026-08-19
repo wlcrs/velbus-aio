@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -65,8 +65,10 @@ class TestTemperatureSettings:
     async def test_update_and_set_comfort(self):
         written: list = []
         writer = AsyncMock(side_effect=lambda msg: written.append(msg))
+        ctrl = Mock()
+        ctrl.send = writer
 
-        module = Module(0x0C, 0x0E)
+        module = Module(0x0C, 0x0E, controller=ctrl)
         module._data = {
             "Type": "VMB1TS",
             "TemperatureChannel": "01",
@@ -78,7 +80,7 @@ class TestTemperatureSettings:
                 "B9": "TempSensorSettingsPart4",
             },
         }
-        temp_ch = Temperature(module, 1, "Temperature", False, False, writer, 0x0C)
+        temp_ch = Temperature(module, 1, "Temperature", False, False, 0x0C)
 
         await temp_ch.update_settings_part1(
             current_set=20,
@@ -142,7 +144,7 @@ class TestTemperatureSettings:
     @pytest.mark.asyncio
     async def test_unknown_key(self):
         """Unknown setting keys are rejected."""
-        module = Module(0x0C, 0x0E)
-        temp_ch = Temperature(module, 1, "Temperature", False, False, AsyncMock(), 0x0C)
+        module = Module(0x0C, 0x0E, controller=Mock())
+        temp_ch = Temperature(module, 1, "Temperature", False, False, 0x0C)
         with pytest.raises(VelbusConfigError):
             await temp_ch.set_setting("nope", 1)

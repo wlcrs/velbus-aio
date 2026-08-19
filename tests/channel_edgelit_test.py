@@ -12,7 +12,7 @@ class TestEdgeLit:
     @pytest.mark.asyncio
     async def test_reset_color(self, mock_module, mock_writer):
         """Test resetting edge color."""
-        edge = EdgeLit(mock_module, 1, "Edge", False, True, mock_writer, 0x01)
+        edge = EdgeLit(mock_module, 1, "Edge", False, True, 0x01)
         await edge.reset_color(left=True, top=False, right=True, bottom=False)
 
         mock_writer.assert_called_once()
@@ -27,7 +27,7 @@ class TestEdgeLit:
     @pytest.mark.asyncio
     async def test_set_color(self, mock_module, mock_writer):
         """Test setting edge color."""
-        edge = EdgeLit(mock_module, 1, "Edge", False, True, mock_writer, 0x01)
+        edge = EdgeLit(mock_module, 1, "Edge", False, True, 0x01)
         await edge.set_color(
             5, left=True, top=True, right=False, bottom=False, blinking=True
         )

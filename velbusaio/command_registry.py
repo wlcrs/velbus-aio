@@ -164,19 +164,23 @@ class CommandRegistry:
         self._overrides[module_type][command_value] = command_class
 
     def register_module_commands(
-        self, module_type: int, command_to_class: dict[str, str]
+        self, module_type: int, command_to_class: dict[str, type] | dict[int, type]
     ) -> None:
         """Register commands for a module from spec CommandToClass mapping."""
         if module_type not in self._overrides:
             self._overrides[module_type] = {}
-        for command_hex, class_name in command_to_class.items():
-            command_class = MESSAGE_CATALOG.get(class_name)
-            if command_class is None:
-                raise CommandRegistryError(
-                    f"Unknown message class {class_name} for module type "
-                    f"{module_type:#04x} command {command_hex}"
-                )
-            command_value = int(command_hex, 16)
+        for command_hex, command_class in command_to_class.items():
+            if not isinstance(command_class, type):
+                resolved = MESSAGE_CATALOG.get(command_class)
+                if resolved is None:
+                    raise CommandRegistryError(
+                        f"Unknown message class {command_class} for module type "
+                        f"{module_type:#04x} command {command_hex}"
+                    )
+                command_class = resolved
+            command_value = (
+                int(command_hex, 16) if isinstance(command_hex, str) else int(command_hex)
+            )
             self._register_override(command_value, command_class, module_type)
 
     def has_command(self, command_value: int, module_type: int = 0) -> bool:

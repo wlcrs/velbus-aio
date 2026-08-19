@@ -12,7 +12,15 @@ from collections.abc import Awaitable, Callable
 import inspect
 import logging
 import types
-from typing import TYPE_CHECKING, Any, TypeVar, Union, get_args, get_origin, get_type_hints
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 if TYPE_CHECKING:
     from velbusaio.module import Module
@@ -46,17 +54,15 @@ def _ensure_handlers_loaded() -> None:
     global _HANDLERS_LOADED
     if not _HANDLERS_LOADED:
         _HANDLERS_LOADED = True
-        import velbusaio.domains.climate.handler  # noqa: F401
-        import velbusaio.domains.cover.handler  # noqa: F401
-        import velbusaio.domains.input.handler  # noqa: F401
-        import velbusaio.domains.lighting.handler  # noqa: F401
-        import velbusaio.domains.meteo.handler  # noqa: F401
+        import velbusaio.domains.climate.handler
+        import velbusaio.domains.cover.handler
+        import velbusaio.domains.input.handler
+        import velbusaio.domains.lighting.handler
+        import velbusaio.domains.meteo.handler
         import velbusaio.domains.power.handler  # noqa: F401
 
 
-def extract_message_types(
-    handler: Callable[..., Any]
-) -> tuple[type[Message], ...]:
+def extract_message_types(handler: Callable[..., Any]) -> tuple[type[Message], ...]:
     """Inspect handler callable parameter type annotations to determine Message types."""
     func = getattr(handler, "__func__", handler)
     sig = inspect.signature(func)
@@ -94,12 +100,11 @@ def extract_message_types(
                 f"Handler {handler} union type has no valid Message subclasses"
             )
         return tuple(types_list)
-    elif isinstance(param_type, type) and issubclass(param_type, Message):
+    if isinstance(param_type, type) and issubclass(param_type, Message):
         return (param_type,)
-    else:
-        raise TypeError(
-            f"Handler {handler} parameter '{param_name}' type {param_type} is not a subclass of Message"
-        )
+    raise TypeError(
+        f"Handler {handler} parameter '{param_name}' type {param_type} is not a subclass of Message"
+    )
 
 
 F = TypeVar("F", bound=Callable[..., Awaitable[None]])

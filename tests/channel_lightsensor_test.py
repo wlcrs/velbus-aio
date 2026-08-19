@@ -10,12 +10,13 @@ class TestLightSensor:
 
     def test_get_categories(self, mock_module, mock_writer):
         """Test light sensor categories."""
-        sensor = LightValue(mock_module, "Light", mock_writer)
+        sensor = LightValue(mock_module, "Light")
         assert sensor.get_categories() == ["sensor"]
 
     @pytest.mark.asyncio
     async def test_get_state(self, mock_module, mock_writer):
         """Test getting light sensor state."""
-        sensor = LightValue(mock_module, "Light", mock_writer)
+        sensor = LightValue(mock_module, "Light")
         await sensor.update_value(125.5)
+        assert sensor.value == 125.5
         assert sensor.get_state() == 125.5

@@ -3,15 +3,52 @@
 Handles reading and parsing Velbus VLP files.
 """
 
-import importlib.resources
-import json
 import logging
+from typing import TYPE_CHECKING
 
 import anyio
 from bs4 import BeautifulSoup
 
 from velbusaio.command_registry import MODULE_DIRECTORY
-from velbusaio.helpers import h2
+from velbusaio.module_spec_loader import load_module_spec
+
+if TYPE_CHECKING:
+    from velbusaio.controller import Controller
+    from velbusaio.module import Module
+
+
+async def create_module_from_vlp(
+    vlp_mod: vlpModule, *, controller: Controller
+) -> Module:
+    """Construct and populate a Module instance from parsed VLP module data."""
+    from velbusaio.module import Module  # noqa: PLC0415
+
+    addr = vlp_mod.get_decimal_addr()
+    mod_type = vlp_mod.get_type()
+    if mod_type is None:
+        raise ValueError(f"Unknown module type for VLP module {vlp_mod.get_name()}")
+
+    build = vlp_mod.get_build()
+    build_year = int(build[:2]) if len(build) >= 4 and build[:2].isdigit() else None
+    build_week = int(build[2:4]) if len(build) >= 4 and build[2:4].isdigit() else None
+
+    module = Module.factory(
+        addr,
+        mod_type,
+        controller=controller,
+        serial=vlp_mod.get_serial(),
+        build_year=build_year,
+        build_week=build_week,
+    )
+    module._name = vlp_mod.get_name()  # noqa: SLF001
+    for chan_addr, chan_info in vlp_mod.get_channels().items():
+        try:
+            chan_num = int(chan_addr)
+        except ValueError:
+            continue
+        if chan_num in module._channels and isinstance(chan_info, dict) and "Name" in chan_info:  # noqa: SLF001
+            module._channels[chan_num].name = chan_info["Name"]  # noqa: SLF001
+    return module
 
 
 class VlpFile:
@@ -123,21 +160,28 @@ class vlpModule:
         """Parse the VLP module memory and extract channel names."""
         await self._load_module_spec()
 
-        if "Memory" not in self._spec:
+        if not self._spec.memory.channels and not self._spec.memory.extras:
             self._log.debug("  => no Memory locations found")
             return
 
         # channel names
-        self._channels = self._spec.get("Channels", {})
-        for addr, chan in self._channels.items():
-            self._log.debug(f" => Processing channel {addr}:")
-            if ("Editable" in chan) and (chan["Editable"] == "yes"):
-                self._log.debug(f"  => channel {addr} is editable, getting name")
-                name = self._get_channel_name(int(addr))
+        self._channels = {
+            num: {
+                "Name": chan_spec.name,
+                "Editable": "yes" if chan_spec.editable else "no",
+                "Type": chan_spec.channel_type,
+            }
+            for num, chan_spec in self._spec.channels.items()
+        }
+        for chan_num, chan in self._channels.items():
+            self._log.debug(f" => Processing channel {chan_num}:")
+            if chan.get("Editable") == "yes":
+                self._log.debug(f"  => channel {chan_num} is editable, getting name")
+                name = self._get_channel_name(int(chan_num))
                 if name:
-                    self._log.debug(f"  => got name '{name}' for channel {addr}")
-                    self._channels[addr]["Name"] = name
-                    self._channels[addr]["_is_loaded"] = True
+                    self._log.debug(f"  => got name '{name}' for channel {chan_num}")
+                    chan["Name"] = name
+                    chan["_is_loaded"] = True
 
         # extra
         self._load_extra_data()
@@ -145,10 +189,10 @@ class vlpModule:
     def _load_extra_data(self) -> None:
         """Load extra data from memory."""
         self._log.debug(" => Getting extra data")
-        if "Extras" not in self._spec["Memory"]:
+        if not self._spec.memory.extras:
             self._log.debug("  => no Extra Memory locations found")
             return
-        for addr, extra in self._spec["Memory"]["Extras"].items():
+        for addr, extra in self._spec.memory.extras.items():
             byte_data = bytes.fromhex(self._read_from_memory(addr))
             self._log.debug(
                 f"  => got extra data {byte_data.hex().upper()} from address {addr}"
@@ -219,22 +263,23 @@ class vlpModule:
                 # Don't care bit, skip
                 continue
             if pattern_bit != data_bit:
-                # Specific bit must match
+                # Bit mismatch
                 return False
 
         return True
 
     def _get_channel_name(self, chan: int) -> str | None:
-        """Get the name of a channel from memory."""
-        if "Channels" not in self._spec["Memory"]:
+        """Get the channel name from memory."""
+        self._log.debug(f" => Getting channel name for {chan}")
+        if not self._spec.memory.channels:
             self._log.debug("  => no Channels Memory locations found")
             return None
         dchan = format(chan, "02d")
-        if dchan not in self._spec["Memory"]["Channels"]:
+        if dchan not in self._spec.memory.channels:
             self._log.debug(f"  => no chan {chan} Memory locations found")
             return None
         byte_data = bytes.fromhex(
-            self._read_from_memory(self._spec["Memory"]["Channels"][dchan]).replace(
+            self._read_from_memory(self._spec.memory.channels[dchan]).replace(
                 "FF", ""
             )
         )
@@ -268,11 +313,7 @@ class vlpModule:
             )
 
         assert memmap_id is not None
-        with importlib.resources.path(
-            __name__, f"module_spec/{h2(memmap_id)}.json"
-        ) as fspath:
-            async with await anyio.open_file(fspath) as protocol_file:
-                self._spec = json.loads(await protocol_file.read())
+        self._spec = load_module_spec(memmap_id, self._log)
 
     def _read_from_memory(self, address_range) -> str:
         """Read a range of bytes from the module memory."""

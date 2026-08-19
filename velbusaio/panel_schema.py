@@ -2,75 +2,42 @@
 
 from __future__ import annotations
 
-import importlib.resources
-import json
 from typing import TYPE_CHECKING, Any
 
 from velbusaio.actions import iter_action_options
+from velbusaio.module_spec import ModuleSpec
+from velbusaio.module_spec_loader import load_module_spec
 
 if TYPE_CHECKING:
     from velbusaio.module import Module
 
-_SPEC_CACHE: dict[int, dict[str, Any]] = {}
 
-
-def load_module_spec(type_id: int) -> dict[str, Any]:
-    """Load and cache the merged module specification for a type id."""
-    if type_id in _SPEC_CACHE:
-        return _SPEC_CACHE[type_id]
-
-    global_data: dict[str, Any] = {}
-    global_path = importlib.resources.files("velbusaio").joinpath(
-        "module_spec/global.json"
+def _channel_entries(spec: ModuleSpec) -> list[dict[str, Any]]:
+    enable_channels = set(
+        spec.memory.channel_enable.channels
+        if spec.memory.channel_enable
+        else ()
     )
-    if global_path.is_file():
-        global_data = json.loads(global_path.read_text(encoding="utf-8"))
-
-    spec_path = importlib.resources.files("velbusaio").joinpath(
-        f"module_spec/{type_id:02X}.json"
-    )
-    if not spec_path.is_file():
-        spec: dict[str, Any] = {}
-    else:
-        spec = json.loads(spec_path.read_text(encoding="utf-8"))
-
-    for key, value in global_data.items():
-        if key not in spec:
-            spec[key] = value
-        elif isinstance(value, dict) and isinstance(spec[key], dict):
-            spec[key] = {**value, **spec[key]}
-
-    _SPEC_CACHE[type_id] = spec
-    return spec
-
-
-def _channel_entries(spec: dict[str, Any]) -> list[dict[str, Any]]:
-    channels = spec.get("Channels", {})
-    enable_channels = {
-        int(key)
-        for key in spec.get("Memory", {}).get("ChannelEnable", {}).get("channels", {})
-    }
     entries: list[dict[str, Any]] = []
-    for chan_key, chan_data in sorted(channels.items(), key=lambda item: int(item[0])):
-        channel = int(chan_key)
+    for channel, chan_spec in sorted(spec.channels.items(), key=lambda item: item[0]):
         entries.append(
             {
                 "channel": channel,
-                "name": chan_data.get("Name", f"Channel {channel}"),
-                "type": chan_data.get("Type"),
-                "editable": chan_data.get("Editable") == "yes",
-                "subdevice": chan_data.get("Subdevice") == "yes",
+                "name": chan_spec.name or f"Channel {channel}",
+                "type": chan_spec.channel_type,
+                "editable": chan_spec.editable,
+                "subdevice": chan_spec.subdevice,
                 "supports_enable": channel in enable_channels,
             }
         )
     return entries
 
 
-def _channel_enable_section(spec: dict[str, Any]) -> dict[str, Any] | None:
-    enable = spec.get("Memory", {}).get("ChannelEnable")
+def _channel_enable_section(spec: ModuleSpec) -> dict[str, Any] | None:
+    enable = spec.memory.channel_enable
     if not enable:
         return None
-    channels = sorted(int(key) for key in enable.get("channels", {}))
+    channels = sorted(enable.channels.keys())
     if not channels:
         return None
     return {
@@ -80,14 +47,14 @@ def _channel_enable_section(spec: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def _contact_section(spec: dict[str, Any]) -> dict[str, Any] | None:
-    action_table = spec.get("Memory", {}).get("ActionTable")
+def _contact_section(spec: ModuleSpec) -> dict[str, Any] | None:
+    action_table = spec.memory.action_table
     if not action_table:
         return None
     channels = sorted(
-        int(key)
-        for key, chan_spec in action_table.get("channels", {}).items()
-        if isinstance(chan_spec, dict) and chan_spec.get("noc_address") is not None
+        channel
+        for channel, chan_spec in action_table.channels.items()
+        if chan_spec.noc_address is not None
     )
     if not channels:
         return None
@@ -99,24 +66,23 @@ def _contact_section(spec: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def _editable_name_channels(spec: dict[str, Any]) -> list[dict[str, Any]]:
-    memory_channels = spec.get("Memory", {}).get("Channels", {})
+def _editable_name_channels(spec: ModuleSpec) -> list[dict[str, Any]]:
     editable = {
-        int(chan_key)
-        for chan_key, chan_data in spec.get("Channels", {}).items()
-        if chan_data.get("Editable") == "yes" and chan_key in memory_channels
+        chan_num
+        for chan_num, chan_spec in spec.channels.items()
+        if chan_spec.editable and chan_num in spec.memory.channels
     }
     return [entry for entry in _channel_entries(spec) if entry["channel"] in editable]
 
 
-def _action_table_section(spec: dict[str, Any]) -> dict[str, Any] | None:
-    action_table = spec.get("Memory", {}).get("ActionTable")
+def _action_table_section(spec: ModuleSpec) -> dict[str, Any] | None:
+    action_table = spec.memory.action_table
     if not action_table:
         return None
-    catalog_id = str(action_table.get("actions", "relay_classic"))
-    channels = sorted(int(key) for key in action_table.get("channels", {}))
-    kind = str(
-        action_table.get("kind")
+    catalog_id = action_table.actions or "relay_classic"
+    channels = sorted(int(key) for key in action_table.channels)
+    kind = (
+        action_table.kind
         or ("input" if catalog_id.startswith("input_") else "output")
     )
     return {
@@ -124,27 +90,26 @@ def _action_table_section(spec: dict[str, Any]) -> dict[str, Any] | None:
         "type": "action_table",
         "kind": kind,
         "catalog_id": catalog_id,
-        "slot_count": int(action_table.get("slot_count", 39)),
-        "slot_size": int(action_table.get("slot_size", 6)),
-        "layout": action_table.get("layout", "per_channel"),
+        "slot_count": action_table.slot_count or 39,
+        "slot_size": action_table.slot_size or 6,
+        "layout": action_table.layout or "per_channel",
         "channels": channels,
         "actions": list(iter_action_options(catalog_id)),
     }
 
 
-def _properties_section(spec: dict[str, Any]) -> dict[str, Any] | None:
-    properties = spec.get("Properties", {})
-    if not properties:
+def _properties_section(spec: ModuleSpec) -> dict[str, Any] | None:
+    if not spec.properties:
         return None
     items: list[dict[str, Any]] = []
-    for key, prop_data in properties.items():
-        if "Type" not in prop_data:
+    for key, prop_spec in spec.properties.items():
+        if not prop_spec.prop_type:
             continue
         items.append(
             {
                 "key": key,
-                "name": prop_data.get("Name", key),
-                "property_type": prop_data["Type"],
+                "name": prop_spec.name,
+                "property_type": prop_spec.prop_type,
             }
         )
     if not items:
@@ -187,14 +152,9 @@ def get_module_type_schema(type_id: int) -> dict[str, Any]:
     if properties_section is not None:
         sections.append(properties_section)
 
-    panel_override = spec.get("Panel", {})
-    if order := panel_override.get("section_order"):
-        order_map = {section["id"]: index for index, section in enumerate(order)}
-        sections.sort(key=lambda section: order_map.get(section["id"], len(order_map)))
-
     return {
         "type_id": type_id,
-        "type_name": spec.get("Type", f"0x{type_id:02X}"),
+        "type_name": spec.type_name or f"0x{type_id:02X}",
         "sections": sections,
     }
 
@@ -205,7 +165,7 @@ async def get_module_instance_data(module: Module) -> dict[str, Any]:
     channel_data: dict[str, Any] = {}
     for channel_num, channel in channels.items():
         entry: dict[str, Any] = {
-            "name": channel.get_name(),
+            "name": channel.name,
             "type": type(channel).__name__,
         }
         if (
@@ -226,8 +186,8 @@ async def get_module_instance_data(module: Module) -> dict[str, Any]:
 
     properties: dict[str, Any] = {}
     for key, prop in module.get_properties().items():
-        if hasattr(prop, "get_selected_program"):
-            properties[key] = prop.get_selected_program()
+        if hasattr(prop, "value"):
+            properties[key] = prop.value
         elif hasattr(prop, "get_state"):
             properties[key] = prop.get_state()
 

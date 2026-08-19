@@ -16,12 +16,11 @@ from velbusaio.module import Module
 
 
 @pytest.mark.asyncio
-async def test_cover_domain_single_status():
+async def test_cover_domain_single_status(mock_controller):
     """Test routing of single-channel blind status."""
-    module = Module(1, 0x1B)
-    writer = AsyncMock()
+    module = Module(1, 0x1B, controller=mock_controller)
 
-    blind = Blind(module, 1, "Blind 1", False, True, writer, 1)
+    blind = Blind(module, 1, "Blind 1", False, True, 1)
     module._channels[1] = blind
 
     msg = BlindStatusNgMessage(1)
@@ -29,7 +28,7 @@ async def test_cover_domain_single_status():
     msg.status = 0x01  # opening
     msg.position = 50
 
-    await module.dispatch_message(msg)
+    await module.on_message(msg)
 
     assert blind.state == BlindState.OPENING
     assert blind.position == 50
@@ -37,13 +36,12 @@ async def test_cover_domain_single_status():
 
 
 @pytest.mark.asyncio
-async def test_cover_domain_ng20():
+async def test_cover_domain_ng20(mock_controller):
     """Test routing of dual-channel NG20 blind status."""
-    module = Module(1, 0x20)
-    writer = AsyncMock()
+    module = Module(1, 0x20, controller=mock_controller)
 
-    blind1 = Blind(module, 1, "Blind 1", False, True, writer, 1)
-    blind2 = Blind(module, 2, "Blind 2", False, True, writer, 1)
+    blind1 = Blind(module, 1, "Blind 1", False, True, 1)
+    blind2 = Blind(module, 2, "Blind 2", False, True, 1)
     module._channels[1] = blind1
     module._channels[2] = blind2
 
@@ -52,7 +50,7 @@ async def test_cover_domain_ng20():
     msg.status = [0x01, 0x02]
     msg.position = [10, 90]
 
-    await module.dispatch_message(msg)
+    await module.on_message(msg)
 
     assert blind1.state == BlindState.OPENING
     assert blind1.position == 10

@@ -22,9 +22,7 @@ _LOG = logging.getLogger("velbus-cover")
 def _get_blind(module: Module, raw_channel: int | str) -> Blind | None:
     channel_id = module.map_channel_number(raw_channel)
     blinds = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, Blind)
+        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Blind)
     }
     blind = blinds.get(channel_id)
     if blind is None:
@@ -45,18 +43,14 @@ async def handle_blind_status_ng20(
 
 
 @register_handler
-async def handle_blind_status_ng(
-    module: Module, message: BlindStatusNgMessage
-) -> None:
+async def handle_blind_status_ng(module: Module, message: BlindStatusNgMessage) -> None:
     """Route NG blind status messages with position."""
     if blind := _get_blind(module, message.channel):
         await blind.update_status(message.status, message.position)
 
 
 @register_handler
-async def handle_blind_status(
-    module: Module, message: BlindStatusMessage
-) -> None:
+async def handle_blind_status(module: Module, message: BlindStatusMessage) -> None:
     """Route standard single-channel blind status messages."""
     if blind := _get_blind(module, message.channel):
         await blind.update_status(message.status)

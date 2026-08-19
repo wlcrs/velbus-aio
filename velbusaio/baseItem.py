@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 _MISSING = object()
 
 
-class BaseItem(ABC):
-    """Base class for properties or channels."""
+class DirtyTrackingMixin:
+    """Mixin providing automatic dirty state tracking for annotated public attributes."""
 
     _tracked_fields: frozenset[str] = frozenset()
     _is_dirty: bool = False
@@ -32,20 +32,6 @@ class BaseItem(ABC):
                     tracked.add(attr)
         cls._tracked_fields = frozenset(tracked)
 
-    def __init__(
-        self,
-        module: Module,
-        name: str,
-        writer: Callable[[Message], Awaitable[None]],
-    ):
-        """Initialize the property."""
-        self._module = module
-        self._name = name
-        self._default_name = name
-        self._writer = writer
-        self._on_status_update: list[Callable[[], Awaitable[None]]] = []
-        self._is_dirty = False
-
     def __setattr__(self, name: str, value: Any) -> None:
         if hasattr(self, "_tracked_fields") and name in self._tracked_fields:
             current_value = getattr(self, name, _MISSING)
@@ -53,74 +39,43 @@ class BaseItem(ABC):
                 super().__setattr__("_is_dirty", True)
         super().__setattr__(name, value)
 
-    @final
-    def get_name(self) -> str:
-        """Return the name of this item."""
-        return self._name
+
+class BaseItem(DirtyTrackingMixin, ABC):
+    """Base class for properties or channels."""
+
+    def __init__(
+        self,
+        module: Module,
+        name: str,
+    ):
+        """Initialize the property or channel."""
+        self.module = module
+        self.name = name
+        self.default_name = name
+        self._on_status_update: list[Callable[[], Awaitable[None]]] = []
+        self._is_dirty = False
 
     @final
-    def set_name(self, name: str) -> None:
-        """Set the name of this item."""
-        self._name = name
+    async def send_message(self, message: Message) -> None:
+        """Send a message through the parent module."""
+        if self.module is None:
+            raise RuntimeError(f"Item {self.name} has no module associated")
+        await self.module.send_message(message)
 
     @final
-    def get_default_name(self) -> str:
-        """Return the default name of this item as defined in the module spec."""
-        return self._default_name
-
-    @final
-    def set_writer(self, writer: Callable[[Message], Awaitable[None]]) -> None:
-        """Set the writer function for this item."""
-        self._writer = writer
-
-    @final
-    def get_module(self) -> Module:
-        """Get the module this property belongs to."""
-        return self._module
-
-    @final
-    def get_module_type(self) -> int:
-        """Return module type."""
-        return self._module.get_type()
-
-    @final
-    def get_module_type_name(self) -> str:
-        """Return module type name."""
-        return self._module.get_type_name()
-
-    @final
-    def get_module_serial(self) -> str | None:
-        """Return module serial number."""
-        return self._module.get_serial()
-
-    @final
-    def get_module_sw_version(self) -> str:
-        """Return module software version."""
-        return self._module.get_sw_version()
-
-    @final
-    def get_module_address(self) -> int:
-        """Return module address for channel."""
-        return self._module.get_address()
-
-    @final
-    def get_full_name(self) -> str:
+    @property
+    def full_name(self) -> str:
         """Return full channel name including module name and type."""
         if self.is_sub_device():
-            return f"{self._module.get_name()} ({self._module.get_type_name()}) - {self._name}"
-        return f"{self._module.get_name()} ({self._module.get_type_name()})"
-
-    @final
-    def is_connected(self) -> bool:
-        """Return if the module is connected."""
-        return self._module.is_connected
+            return f"{self.module.get_name()} ({self.module.get_type_name()}) - {self.name}"
+        return f"{self.module.get_name()} ({self.module.get_type_name()})"
 
     @final
     def __repr__(self) -> str:
         """Representation of this property."""
         items = []
         for k, v in self.__dict__.items():
-            if k not in ["_module", "_class", "_on_status_update", "_writer", "_is_dirty"]:
+            if k not in ["module", "_class", "_on_status_update", "_is_dirty"]:
                 items.append(f"{k} = {v!r}")
         return "{}[{}]".format(type(self), ", ".join(items))
 
@@ -158,7 +113,7 @@ class BaseItem(ABC):
         """
         data: dict = {}
         for key, value in self.__dict__.items():
-            if key in ("_module", "_on_status_update", "_writer", "_is_dirty"):
+            if key in ("module", "_on_status_update", "_writer", "_is_dirty"):
                 continue
             data[key] = value
         return data
@@ -192,7 +147,13 @@ class BaseItem(ABC):
         data = {}
         data["type"] = self.__class__.__name__
         for key, value in self.__dict__.items():
-            if key not in ["_module", "_writer", "_name_parts", "_on_status_update", "_is_dirty"]:
+            if key not in [
+                "module",
+                "_writer",
+                "_name_parts",
+                "_on_status_update",
+                "_is_dirty",
+            ]:
                 data[key.lstrip("_")] = value
         return data
 

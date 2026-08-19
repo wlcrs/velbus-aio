@@ -354,3 +354,95 @@ def test_defaults(own_command_registry):
 
     with pytest.raises(ValueError, match=r"Command_value should be >=0 and <=255"):
         registry.register_command(256, testclass, "TestModule")
+
+
+def test_module_spec_resolves_command_classes():
+    from velbusaio.messages.relay_status import RelayStatusMessage
+    from velbusaio.module_spec import ModuleSpec
+
+    spec = ModuleSpec.from_dict(
+        {
+            "Type": "VMB4RY",
+            "CommandToClass": {
+                "FB": "RelayStatusMessage",
+            },
+        }
+    )
+    assert spec.command_to_class["FB"] is RelayStatusMessage
+
+
+def test_module_spec_raises_on_missing_command_class():
+    from velbusaio.module_spec import ModuleSpec
+
+    with pytest.raises(KeyError, match=r"Unknown message class 'NonExistentMessageClass'"):
+        ModuleSpec.from_dict(
+            {
+                "Type": "VMB4RY",
+                "CommandToClass": {
+                    "FB": "NonExistentMessageClass",
+                },
+            }
+        )
+
+
+def test_channel_spec_resolves_channel_class():
+    from velbusaio.channels import Button, Relay
+    from velbusaio.module_spec import ChannelSpec, ModuleSpec
+
+    spec = ModuleSpec.from_dict(
+        {
+            "Type": "VMB4RY",
+            "Channels": {
+                "1": {"Name": "Relay 1", "Type": "Relay"},
+                "2": {"Name": "Button 1", "Type": "Button"},
+            },
+        }
+    )
+    assert spec.channels[1].channel_class is Relay
+    assert spec.channels[1].channel_type == "Relay"
+    assert spec.channels[2].channel_class is Button
+    assert spec.channels[2].channel_type == "Button"
+
+
+def test_channel_spec_raises_on_missing_channel_class():
+    from velbusaio.module_spec import ModuleSpec
+
+    with pytest.raises(KeyError, match=r"Unknown channel type 'NonExistentChannel'"):
+        ModuleSpec.from_dict(
+            {
+                "Type": "VMB4RY",
+                "Channels": {
+                    "1": {"Name": "Relay 1", "Type": "NonExistentChannel"},
+                },
+            }
+        )
+
+
+def test_property_spec_resolves_property_class():
+    from velbusaio.module_spec import ModuleSpec
+    from velbusaio.properties import BusErrorTx
+
+    spec = ModuleSpec.from_dict(
+        {
+            "Type": "VMB4RY",
+            "Properties": {
+                "bus_error_tx": {"Name": "Bus Error Transmit", "Type": "BusErrorTx"},
+            },
+        }
+    )
+    assert spec.properties["bus_error_tx"].prop_class is BusErrorTx
+    assert spec.properties["bus_error_tx"].prop_type == "BusErrorTx"
+
+
+def test_property_spec_raises_on_missing_property_class():
+    from velbusaio.module_spec import ModuleSpec
+
+    with pytest.raises(KeyError, match=r"Unknown property type 'NonExistentProperty'"):
+        ModuleSpec.from_dict(
+            {
+                "Type": "VMB4RY",
+                "Properties": {
+                    "prop1": {"Name": "Prop 1", "Type": "NonExistentProperty"},
+                },
+            }
+        )

@@ -16,7 +16,7 @@ class TestButtonCounter:
     def test_get_categories_counter_mode(self, mock_module, mock_writer):
         """Test button counter categories in counter mode."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 100
         assert button.get_categories() == ["sensor"]
@@ -24,7 +24,7 @@ class TestButtonCounter:
     def test_get_categories_counter_mode_zero(self, mock_module, mock_writer):
         """Test button counter categories when counter value is zero."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 0
         assert button.get_categories() == ["sensor"]
@@ -32,7 +32,7 @@ class TestButtonCounter:
     def test_get_categories_button_mode(self, mock_module, mock_writer):
         """Test button counter categories in button mode (no data received yet)."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         # counter=None means no counter status received; channel acts as button
         assert button.counter is None
@@ -41,7 +41,7 @@ class TestButtonCounter:
     def test_is_counter_channel(self, mock_module, mock_writer):
         """Test checking if channel is counter."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 100
         assert button.is_counter_channel()
@@ -52,7 +52,7 @@ class TestButtonCounter:
     def test_is_counter_channel_zero_counter(self, mock_module, mock_writer):
         """Test that a zero counter value still classifies as a counter channel."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 0
         assert button.is_counter_channel()
@@ -61,7 +61,7 @@ class TestButtonCounter:
     async def test_is_long_pressed(self, mock_module, mock_writer):
         """Test inherited long-press state accessor."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.long = True
         await button.maybe_status_update()
@@ -74,7 +74,7 @@ class TestButtonCounter:
     def test_get_sensor_type_counter(self, mock_module, mock_writer):
         """Test getting sensor type for counter."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 1
         assert button.get_sensor_type() == "counter"
@@ -85,7 +85,7 @@ class TestButtonCounter:
     def test_get_state_with_energy(self, mock_module, mock_writer):
         """Test getting state with energy value."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.raw_energy = 150.5
         assert button.get_state() == 150.5
@@ -93,7 +93,7 @@ class TestButtonCounter:
     def test_get_state_liters_per_hour(self, mock_module, mock_writer):
         """Test getting state for liters per hour."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_LITERS_HOUR
         button.delay = 1000
@@ -104,7 +104,7 @@ class TestButtonCounter:
     def test_get_state_cubic_meter_per_hour(self, mock_module, mock_writer):
         """Test getting state for cubic meters per hour."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_CUBIC_METER_HOUR
         button.delay = 1000
@@ -115,7 +115,7 @@ class TestButtonCounter:
     def test_get_state_kwh(self, mock_module, mock_writer):
         """Test getting state for kilowatt hours."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = ENERGY_KILO_WATT_HOUR
         button.delay = 1000
@@ -126,7 +126,7 @@ class TestButtonCounter:
     def test_get_state_no_delay(self, mock_module, mock_writer):
         """Test getting state when delay is not set."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_LITERS_HOUR
         button.delay = None
@@ -135,7 +135,7 @@ class TestButtonCounter:
     def test_get_state_max_delay(self, mock_module, mock_writer):
         """Test getting state when delay is max value."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_LITERS_HOUR
         button.delay = 0xFFFF
@@ -145,7 +145,7 @@ class TestButtonCounter:
     def test_get_unit_liters(self, mock_module, mock_writer):
         """Test getting unit for liters."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_LITERS_HOUR
         assert button.get_unit() == "L"
@@ -153,7 +153,7 @@ class TestButtonCounter:
     def test_get_unit_cubic_meter(self, mock_module, mock_writer):
         """Test getting unit for cubic meters."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_CUBIC_METER_HOUR
         assert button.get_unit() == "m3"
@@ -161,7 +161,7 @@ class TestButtonCounter:
     def test_get_unit_kwh(self, mock_module, mock_writer):
         """Test getting unit for kilowatt hours."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = ENERGY_KILO_WATT_HOUR
         assert button.get_unit() == "W"
@@ -169,7 +169,7 @@ class TestButtonCounter:
     def test_get_counter_state_with_power(self, mock_module, mock_writer):
         """Test getting counter state with power value."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.power = 250.5
         assert button.get_counter_state() == 250.5
@@ -177,7 +177,7 @@ class TestButtonCounter:
     def test_get_counter_state_calculated(self, mock_module, mock_writer):
         """Test the counter state is derived from the pulse interval."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = ENERGY_KILO_WATT_HOUR
         button.counter = 1000
@@ -194,7 +194,7 @@ class TestButtonCounter:
         which made the power and energy sensors in Home Assistant identical.
         """
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = ENERGY_KILO_WATT_HOUR
         button.counter = 1000
@@ -207,7 +207,7 @@ class TestButtonCounter:
     def test_get_counter_state_without_delay(self, mock_module, mock_writer):
         """Test the counter state is 0 while the pulse interval is unknown."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = ENERGY_KILO_WATT_HOUR
         button.counter = 1000
@@ -217,7 +217,7 @@ class TestButtonCounter:
     def test_get_state_without_pulses(self, mock_module, mock_writer):
         """Test the rate is 0 instead of raising when the pulses are unknown."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = ENERGY_KILO_WATT_HOUR
         button.delay = 1000
@@ -226,7 +226,7 @@ class TestButtonCounter:
     def test_get_counter_unit(self, mock_module, mock_writer):
         """Test getting counter unit."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.Unit = VOLUME_LITERS_HOUR
         assert button.get_counter_unit() == VOLUME_LITERS_HOUR
@@ -234,7 +234,7 @@ class TestButtonCounter:
     def test_is_water(self, mock_module, mock_writer):
         """Test checking if counter is water meter."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 100
         button.Unit = VOLUME_LITERS_HOUR
@@ -246,7 +246,7 @@ class TestButtonCounter:
     def test_energy_from_energy_field(self, mock_module, mock_writer):
         """Test energy property returns kWh from raw_energy field (Wh)."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.raw_energy = 100000  # 100000 Wh = 100.0 kWh
         assert button.energy == 100.0
@@ -254,7 +254,7 @@ class TestButtonCounter:
     def test_energy_zero(self, mock_module, mock_writer):
         """Test energy property when raw_energy is zero (valid reading, not unknown)."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.raw_energy = 0
         assert button.energy == 0.0
@@ -262,14 +262,14 @@ class TestButtonCounter:
     def test_energy_none_when_not_received(self, mock_module, mock_writer):
         """Test energy property returns None when no energy data received yet."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         assert button.energy is None
 
     def test_energy_fallback_for_kwh_counter(self, mock_module, mock_writer):
         """Test energy property fallback to pulse-based calc for kWh counters."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 1000
         button.pulses = 10
@@ -279,7 +279,7 @@ class TestButtonCounter:
     def test_energy_fallback_not_used_for_water(self, mock_module, mock_writer):
         """Test energy property does not use pulse-based calc for water counters."""
         button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, mock_writer, 0x01
+            mock_module, 1, "Counter", False, True, 0x01
         )
         button.counter = 1000
         button.pulses = 10

@@ -34,6 +34,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from velbusaio.exceptions import VelbusConfigError
+from velbusaio.module_spec import ActionTableSpec, MemorySpec
 
 if TYPE_CHECKING:
     from velbusaio.memory import MemoryBackend
@@ -731,7 +732,9 @@ class ActionTable:
         )
 
 
-def reserved_ranges(memory_spec: dict[str, Any] | None) -> list[tuple[int, int]]:
+def reserved_ranges(
+    memory_spec: MemorySpec | dict[str, Any] | None,
+) -> list[tuple[int, int]]:
     """Return the EEPROM ranges an action table must never touch.
 
     The module name and the channel names live in the same address space as the
@@ -741,6 +744,13 @@ def reserved_ranges(memory_spec: dict[str, Any] | None) -> list[tuple[int, int]]
     """
     ranges: list[tuple[int, int]] = []
     if not memory_spec:
+        return ranges
+
+    if isinstance(memory_spec, MemorySpec):
+        for mr in memory_spec.name_ranges:
+            ranges.append((mr.start, mr.end))
+        for mr in memory_spec.channels.values():
+            ranges.append((mr.start, mr.end))
         return ranges
 
     sources = [memory_spec.get("ModuleName")]
@@ -777,7 +787,7 @@ def _slots_before_reserved(
 
 def build_action_tables(
     memory: MemoryBackend,
-    spec: dict[str, Any],
+    spec: ActionTableSpec | dict[str, Any] | None,
     logger: logging.Logger | None = None,
     *,
     reserved: Sequence[tuple[int, int]] | None = None,
@@ -792,19 +802,24 @@ def build_action_tables(
     if not spec:
         return {}
     log = logger or _LOGGER
-    layout: Layout = spec.get("layout", "per_channel")
-    slot_count = int(spec.get("slot_count", 39))
-    slot_size = int(spec.get("slot_size", _SLOT_SIZE_CLASSIC))
-    catalog_id = str(spec.get("actions", "relay_classic"))
-    subject_encoding: SubjectEncoding | None = spec.get("subject_encoding")
+    if not isinstance(spec, ActionTableSpec):
+        spec = ActionTableSpec.from_dict(spec)
+
+    layout: Layout = spec.layout or "per_channel"  # type: ignore[assignment]
+    slot_count = spec.slot_count or 39
+    slot_size = spec.slot_size or _SLOT_SIZE_CLASSIC
+    catalog_id = spec.actions or "relay_classic"
+    subject_encoding: SubjectEncoding | None = spec.subject_encoding  # type: ignore[assignment]
+    release_bit = spec.release_bit
+    channels = spec.channels
+    bank_val = spec.bank
+
     if subject_encoding is None and layout == "shared":
         subject_encoding = "param4" if slot_size >= _SLOT_SIZE_V2 else "param3_low3"
-    release_bit = spec.get("release_bit")
     if release_bit is None:
         release_bit = subject_encoding in _RELEASE_BIT_ENCODINGS
     else:
         release_bit = bool(release_bit)
-    channels = spec.get("channels", {})
     tables: dict[int, ActionTable] = {}
     guard = list(reserved or ())
 
@@ -814,7 +829,9 @@ def build_action_tables(
     if layout == "shared":
         if subject_encoding is None:
             raise VelbusConfigError("Shared action tables require subject_encoding")
-        shared_bank = int(str(spec["bank"]), 16)
+        if bank_val is None:
+            raise VelbusConfigError("Shared action tables require bank address")
+        shared_bank = bank_val
         shared_slot_count = _slots_before_reserved(
             shared_bank, slot_count, slot_size, guard
         )
@@ -837,9 +854,10 @@ def build_action_tables(
             logger=log,
         )
 
-    for chan_key, chan_spec in channels.items():
-        channel = int(chan_key)
-        bank = shared_bank if layout == "shared" else int(str(chan_spec["bank"]), 16)
+    for channel, chan_spec in channels.items():
+        bank = shared_bank if layout == "shared" else chan_spec.bank
+        if bank is None:
+            continue
         if layout == "shared":
             channel_slot_count = shared_slot_count
         else:
@@ -856,8 +874,7 @@ def build_action_tables(
                     channel_slot_count,
                 )
 
-        noc = chan_spec.get("noc_address")
-        noc_address = int(str(noc), 16) if noc is not None else None
+        noc_address = chan_spec.noc_address
         if noc_address is not None and any(
             low <= noc_address <= high for low, high in guard
         ):

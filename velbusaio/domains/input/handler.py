@@ -43,7 +43,9 @@ def _get_button(module: Module, raw_channel: int | str) -> Button | None:
         if isinstance(ch, Button) and not isinstance(ch, (ButtonCounter, Sensor))
     }
     btn = buttons.get(channel_id)
-    if btn is None and not isinstance(module.get_channels().get(channel_id), ButtonCounter):
+    if btn is None and not isinstance(
+        module.get_channels().get(channel_id), ButtonCounter
+    ):
         _LOG.warning(
             f"Received button message for non-existent button channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
         )
@@ -68,9 +70,7 @@ def _get_counter(module: Module, raw_channel: int | str) -> ButtonCounter | None
 def _get_sensor(module: Module, raw_channel: int | str) -> Sensor | None:
     channel_id = module.map_channel_number(raw_channel)
     sensors = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, Sensor)
+        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Sensor)
     }
     sensor = sensors.get(channel_id)
     if sensor is None:
@@ -95,9 +95,7 @@ async def handle_push_button_status(
 
 
 @register_handler
-async def handle_counter_status(
-    module: Module, message: CounterStatusMessage
-) -> None:
+async def handle_counter_status(module: Module, message: CounterStatusMessage) -> None:
     """Route counter status."""
     if counter := _get_counter(module, message.channel):
         await counter.update_counter(
@@ -108,9 +106,7 @@ async def handle_counter_status(
 
 
 @register_handler
-async def handle_counter_value(
-    module: Module, message: CounterValueMessage
-) -> None:
+async def handle_counter_value(module: Module, message: CounterValueMessage) -> None:
     """Route counter power/energy values."""
     if counter := _get_counter(module, message.channel):
         await counter.update_values(
@@ -189,18 +185,14 @@ async def handle_module_status_pir(
 
 
 @register_handler
-async def handle_module_status_2(
-    module: Module, message: ModuleStatusMessage2
-) -> None:
+async def handle_module_status_2(module: Module, message: ModuleStatusMessage2) -> None:
     """Route ModuleStatusMessage2 buttons and program property."""
     await _update_buttons_from_list(module, message.address, message.closed)
     await _update_selected_program(module, message.selected_program)
 
 
 @register_handler
-async def handle_module_status(
-    module: Module, message: ModuleStatusMessage
-) -> None:
+async def handle_module_status(module: Module, message: ModuleStatusMessage) -> None:
     """Route standard ModuleStatusMessage buttons and LEDs."""
     led_states: dict[int, ButtonLedState] = {}
     for chan in range(1, 9):
@@ -212,9 +204,7 @@ async def handle_module_status(
             led_states[chan] = ButtonLedState.ON
         else:
             led_states[chan] = ButtonLedState.OFF
-    await _update_buttons_from_list(
-        module, message.address, message.closed, led_states
-    )
+    await _update_buttons_from_list(module, message.address, message.closed, led_states)
 
 
 @register_handler

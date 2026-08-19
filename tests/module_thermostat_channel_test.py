@@ -37,10 +37,12 @@ async def test_thermostat_output_channels_sync(module_type):
     pathlib.Path(get_cache_dir()).mkdir(parents=True, exist_ok=True)
 
     velbus = Velbus("")  # Dummy connection
-    m = Module(module_address, module_type, cache_dir=get_cache_dir())
-    await m.initialize(velbus.send, velbus)
+    m = Module(
+        module_address,
+        module_type,
+        controller=velbus,
+    )
     m._log = logging.getLogger("velbus-module")
-    await m._load_default_channels()
 
     # data[2] bitmask: heater=0x01, boost=0x02, pump=0x04, cooler=0x08,
     # alarm1=0x10, alarm2=0x20, alarm3=0x40, alarm4=0x80.

@@ -28,7 +28,7 @@ async def handle_psu_values(module: Module, message: PsuValuesMessage) -> None:
     suffix = "out" if message.channel == 3 else f"{message.channel}"
     props = module.get_properties().values()
     for prop in props:
-        if suffix in prop.get_name():
+        if suffix in prop.name:
             if isinstance(prop, PSUVoltage):
                 await prop.update_value(message.volt)
             elif isinstance(prop, PSUCurrent):
@@ -42,7 +42,7 @@ async def handle_psu_load(module: Module, message: PsuLoadMessage) -> None:
     """Route PSU load readings."""
     for prop in module.get_properties().values():
         if isinstance(prop, PSULoad):
-            name = prop.get_name()
+            name = prop.name
             if name.endswith("out") or "out" in name:
                 await prop.update_value(message.out)
             elif "1" in name:

@@ -12,14 +12,13 @@ from velbusaio.module import Module
 
 
 @pytest.mark.asyncio
-async def test_meteo_domain_raw_message():
+async def test_meteo_domain_raw_message(mock_controller):
     """Test routing MeteoRawMessage to rain, light, and wind sensor channels."""
-    module = Module(1, 0x18)
-    writer = AsyncMock()
+    module = Module(1, 0x18, controller=mock_controller)
 
-    rain = Sensor(module, 11, "Rain", False, True, writer, 1)
-    light = Sensor(module, 12, "Light", False, True, writer, 1)
-    wind = Sensor(module, 13, "Wind", False, True, writer, 1)
+    rain = Sensor(module, 11, "Rain", False, True, 1)
+    light = Sensor(module, 12, "Light", False, True, 1)
+    wind = Sensor(module, 13, "Wind", False, True, 1)
     module._channels[11] = rain
     module._channels[12] = light
     module._channels[13] = wind
@@ -29,7 +28,7 @@ async def test_meteo_domain_raw_message():
     msg.light = 450.0
     msg.wind = 5.6
 
-    await module.dispatch_message(msg)
+    await module.on_message(msg)
 
     assert rain.get_state() == 1.2
     assert light.get_state() == 450.0

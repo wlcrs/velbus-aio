@@ -9,10 +9,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from velbusaio.channels import Channel
 from velbusaio.config import ConfigParameter
-from velbusaio.const import (
-    DEVICE_CLASS_TEMPERATURE,
-    TEMP_CELSIUS,
-)
+from velbusaio.const import DEVICE_CLASS_TEMPERATURE, TEMP_CELSIUS
 from velbusaio.domains.input.channel import Button
 from velbusaio.exceptions import VelbusConfigError
 from velbusaio.message import Message
@@ -150,18 +147,17 @@ class ThermostatChannel(Button):
         name: str,
         nameEditable: bool,
         subDevice: bool,
-        writer: Callable[[Message], Awaitable[None]],
         address: int,
     ) -> None:
-        super().__init__(module, num, name, nameEditable, subDevice, writer, address)
-        attr_name = _THERMOSTAT_NAME_TO_ATTR.get(self._name)
+        super().__init__(module, num, name, nameEditable, subDevice, address)
+        attr_name = _THERMOSTAT_NAME_TO_ATTR.get(self.name)
         self._extractor: Callable[[TempSensorStatusMessage], bool] | None = (
             operator.attrgetter(attr_name) if attr_name else None
         )
 
     def __setstate__(self, state: dict) -> None:
         super().__setstate__(state)
-        attr_name = _THERMOSTAT_NAME_TO_ATTR.get(self._name)
+        attr_name = _THERMOSTAT_NAME_TO_ATTR.get(self.name)
         self._extractor = operator.attrgetter(attr_name) if attr_name else None
 
     async def update_status_from_message(
@@ -223,16 +219,15 @@ class Temperature(Channel):
         name: str,
         nameEditable: bool,
         subDevice: bool,
-        writer: Callable[[Message], Awaitable[None]],
         address: int,
     ) -> None:
-        super().__init__(module, num, name, nameEditable, subDevice, writer, address)
+        super().__init__(module, num, name, nameEditable, subDevice, address)
         self._settings: dict[str, Any] = {}
 
     def _get_module_data(self) -> dict[str, Any]:
-        if self._module is None:
+        if self.module is None:
             return {}
-        return getattr(self._module, "_data", {})
+        return getattr(self.module, "_data", {})
 
     def supports_temp_settings(self) -> bool:
         return module_supports_temp_settings(self._get_module_data())
@@ -388,7 +383,7 @@ class Temperature(Channel):
 
     async def request_settings(self) -> None:
         """Request temperature sensor settings over the bus."""
-        await self._writer(TempSensorSettingsRequest(self._address))
+        await self.send_message(TempSensorSettingsRequest(self._address))
 
     async def set_setting(self, key: str, value: Any) -> None:
         """Set a single temperature setting and write the corresponding Part frame."""
@@ -445,7 +440,7 @@ class Temperature(Channel):
                 setattr(msg, name, self._settings.get(name, 0))
         else:
             raise VelbusConfigError(f"Unknown settings part: {part}")
-        await self._writer(msg)
+        await self.send_message(msg)
 
     def get_config_parameters(self) -> list[ConfigParameter]:
         """Return discoverable CONFIG parameters for temperature presets."""
@@ -579,7 +574,7 @@ class Temperature(Channel):
         """Set the target temperature."""
         msg = self.create_message(SetTemperatureMessage)
         msg.temp = temp
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_temperature_autosend(
         self, mode: str, seconds: int | None = None
@@ -612,7 +607,7 @@ class Temperature(Channel):
             )
         msg = self.create_message(SensorTempRequest)
         msg.autosend_interval = interval
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def _switch_mode(self) -> None:
         """Switch the climate mode."""
@@ -628,7 +623,7 @@ class Temperature(Channel):
             sleep = 0x0
         msg = self.create_message(msg_cls)
         msg.sleep = sleep
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_preset(self, preset: str) -> None:
         """Set the climate preset."""
@@ -644,13 +639,11 @@ class Temperature(Channel):
         """Set the heat/cool mode."""
         msg_cls = _MODE_TO_MESSAGE.get(mode, TempSetHeatingMessage)
         msg = self.create_message(msg_cls)
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def maybe_update_temperature(self, new_temp: float, precision: float) -> None:
         """Update the temperature only if the new value is different enough."""
-        current_temp_rounded_to_precision = (
-            math.floor(self.cur / precision) * precision
-        )
+        current_temp_rounded_to_precision = math.floor(self.cur / precision) * precision
 
         if current_temp_rounded_to_precision == new_temp:
             return

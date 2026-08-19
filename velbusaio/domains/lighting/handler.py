@@ -32,9 +32,7 @@ _LOG = logging.getLogger("velbus-lighting")
 def _get_relay(module: Module, raw_channel: int | str) -> Relay | None:
     channel_id = module.map_channel_number(raw_channel)
     relays = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, Relay)
+        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Relay)
     }
     relay = relays.get(channel_id)
     if relay is None:
@@ -47,9 +45,7 @@ def _get_relay(module: Module, raw_channel: int | str) -> Relay | None:
 def _get_dimmer(module: Module, raw_channel: int | str) -> Dimmer | None:
     channel_id = module.map_channel_number(raw_channel)
     dimmers = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, Dimmer)
+        num: ch for num, ch in module.get_channels().items() if isinstance(ch, Dimmer)
     }
     dimmer = dimmers.get(channel_id)
     if dimmer is None:
@@ -74,9 +70,7 @@ async def handle_relay_status(
 
 
 @register_handler
-async def handle_relay_status_3(
-    module: Module, message: RelayStatusMessage3
-) -> None:
+async def handle_relay_status_3(module: Module, message: RelayStatusMessage3) -> None:
     """Route multi-channel RelayStatusMessage3."""
     channel_offset = module.calc_channel_offset(message.address)
     for chan in range(1, 5):
@@ -136,18 +130,14 @@ async def handle_dimmer_status(
 
 
 @register_handler
-async def handle_slider_status(
-    module: Module, message: SliderStatusMessage
-) -> None:
+async def handle_slider_status(module: Module, message: SliderStatusMessage) -> None:
     """Route slider status."""
     if dimmer := _get_dimmer(module, message.channel):
         await dimmer.update_dimmer_state(message.cur_slider_state())
 
 
 @register_handler
-async def handle_dim_value_status(
-    module: Module, message: DimValueStatus
-) -> None:
+async def handle_dim_value_status(module: Module, message: DimValueStatus) -> None:
     """Route DALI DimValueStatus across offset channels."""
     for offset, dim_value in enumerate(message.dim_values):
         if dimmer := _get_dimmer(module, message.channel + offset):

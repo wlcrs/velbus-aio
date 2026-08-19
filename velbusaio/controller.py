@@ -37,7 +37,7 @@ from velbusaio.messages.set_daylight_saving import SetDaylightSaving
 from velbusaio.messages.set_realtime_clock import SetRealtimeClock
 from velbusaio.module import Module
 from velbusaio.protocol import VelbusProtocol
-from velbusaio.vlp_reader import VlpFile
+from velbusaio.vlp_reader import VlpFile, create_module_from_vlp
 
 
 @dataclass
@@ -144,6 +144,14 @@ class Velbus:
         """Remove a previously registered on module found coroutine."""
         self._on_module_found_callbacks.remove(meth)
 
+    async def save_module_cache(self, module: Module) -> None:
+        """Save a module's state to this controller's cache directory."""
+        if not self._cache_dir:
+            return
+        from velbusaio.module_cache import save_module_cache  # noqa: PLC0415
+
+        await save_module_cache(self._cache_dir, module)
+
     async def _on_modules_loaded(self, module: Module) -> None:
         """Called when all modules are loaded."""
         for callback in self._on_module_found_callbacks:
@@ -193,6 +201,11 @@ class Velbus:
         """On message received function."""
         await self._handler.handle(msg)
 
+    def register_module(self, module: Module) -> None:
+        """Register a module on the controller."""
+        self._modules[module.get_address()] = module
+        self._log.info(f"Registered module {module.get_address()}: {module}")
+
     async def add_module(
         self,
         addr: int,
@@ -206,16 +219,13 @@ class Velbus:
         module = Module.factory(
             addr,
             typ,
+            controller=self,
             serial=serial,
             build_year=build_year,
             build_week=build_week,
             memorymap=memorymap,
-            cache_dir=self._cache_dir,
-            on_module_found=self._on_modules_loaded,
         )
-        await module.initialize(self.send, self)
-        self._modules[addr] = module
-        self._log.info(f"Found module {addr}: {module}")
+        self.register_module(module)
 
     def add_submodules(self, module: Module, subList: dict[int, int]) -> None:
         """Add submodules address to module."""
@@ -223,8 +233,8 @@ class Velbus:
             if sub_addr == 0xFF:
                 continue
             self._submodules.append(sub_addr)
-            module.add_subaddress(sub_num, sub_addr)
-        module.cleanupSubChannels()
+            module.set_sub_address(sub_num, sub_addr)
+        module.cleanup_sub_channels()
 
     def addr_is_submodule(self, addr: int) -> bool:
         """Check if an address is a submodule."""
@@ -331,29 +341,16 @@ class Velbus:
             vlp = VlpFile(self._vlp_file)
             await vlp.read()
             for mod_data in vlp.get():
-                # Convert hex address string to decimal integer
-                addr = mod_data.get_addr().split(",")
-                decimal_addr = int(addr[0], 16)
-                await self.add_module(
-                    decimal_addr,
-                    mod_data.get_type(),
-                    serial=mod_data.get_serial(),
-                    memorymap=mod_data.get_memory(),
-                    build_year=int(mod_data.get_build()[0:2]),
-                    build_week=int(mod_data.get_build()[2:4]),
-                )
+                await mod_data.parse()
+                module = await create_module_from_vlp(mod_data, controller=self)
+                self.register_module(module)
                 # handle submodules
+                addr = mod_data.get_addr().split(",")
                 if len(addr) > 1:
                     self.add_submodules(
-                        self._modules[decimal_addr], dict(enumerate(addr[1:]))
+                        module, dict(enumerate(addr[1:]))
                     )
-                # load module data, special for dali
-                if mod_data.get_type() == 0x45 or mod_data.get_type() == 0x5A:
-                    await self._modules[decimal_addr].load()
-                else:
-                    module = self._modules[decimal_addr]
-                    await module.load_from_vlp(mod_data)
-                    await module.wait_for_status_messages()
+                await module.wait_for_status_messages()
         else:
             # make sure the cachedir exists
             await anyio.Path(self._cache_dir).mkdir(parents=True, exist_ok=True)
@@ -404,7 +401,7 @@ class Velbus:
                 continue
             if channel.get_temp_settings() is None:
                 continue
-            key = (channel.get_module_address(), channel.get_channel_number())
+            key = (channel.module.get_address(), channel.get_channel_number())
             if key in seen:
                 continue
             seen.add(key)
@@ -447,7 +444,7 @@ class Velbus:
             for param in channel.get_config_parameters():
                 if not param.entity:
                     continue
-                key = (channel.get_module_address(), param.channel, param.key)
+                key = (channel.module.get_address(), param.channel, param.key)
                 if key in seen:
                     continue
                 seen.add(key)

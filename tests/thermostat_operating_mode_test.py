@@ -33,19 +33,16 @@ async def test_thermostat_operating_mode(status_mode, mode_name, sleep_timer):
     cache_dir = get_cache_dir()
     pathlib.Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
-    velbus = MagicMock()
-
+    velbus = Velbus("")  # Dummy connection
     m = Module(
         module_address,
         module_type,
-        cache_dir=get_cache_dir(),
+        controller=velbus,
     )
-    velbus = Velbus("")  # Dummy connection
-    await m.initialize(velbus.send, velbus)
-    m._log = logging.getLogger("velbus-module")
-    chan = m._translate_channel_name(m._data["TemperatureChannel"])
+    assert m._spec.temperature_channel is not None
+    chan = m.map_channel_number(m._spec.temperature_channel)
     m._channels[chan] = Temperature(
-        m, chan, None, False, False, velbus.send, module_address
+        m, chan, None, False, False, module_address
     )
 
     msg = TempSensorStatusMessage(module_address)

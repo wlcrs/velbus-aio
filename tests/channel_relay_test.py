@@ -20,13 +20,13 @@ class TestRelay:
 
     def test_get_categories_enabled(self, mock_module, mock_writer):
         """Test relay categories when enabled."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         assert relay.get_categories() == ["switch"]
 
     @pytest.mark.asyncio
     async def test_get_categories_disabled(self, mock_module, mock_writer):
         """Test relay categories when disabled."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         relay.enabled = False
         await relay.maybe_status_update()
         assert relay.get_categories() == []
@@ -34,7 +34,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_is_on(self, mock_module, mock_writer):
         """Test checking if relay is on."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         relay.on = True
         await relay.maybe_status_update()
         assert relay.is_on()
@@ -46,7 +46,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_is_inhibit(self, mock_module, mock_writer):
         """Test checking if relay is inhibited."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         relay.inhibit = True
         await relay.maybe_status_update()
         assert relay.is_inhibit()
@@ -54,7 +54,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_is_forced_on(self, mock_module, mock_writer):
         """Test checking if relay is forced on."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         relay.forced_on = True
         await relay.maybe_status_update()
         assert relay.is_forced_on()
@@ -62,7 +62,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_is_disabled(self, mock_module, mock_writer):
         """Test checking if relay is disabled."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         relay.disabled = True
         await relay.maybe_status_update()
         assert relay.is_disabled()
@@ -70,7 +70,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_turn_on(self, mock_module, mock_writer):
         """Test turning relay on."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         await relay.turn_on()
 
         mock_writer.assert_called_once()
@@ -81,7 +81,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_turn_off(self, mock_module, mock_writer):
         """Test turning relay off."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         await relay.turn_off()
 
         mock_writer.assert_called_once()
@@ -92,7 +92,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_set_forced_on(self, mock_module, mock_writer):
         """Test setting forced on."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         await relay.set_forced_on(True)
         assert isinstance(mock_writer.call_args[0][0], ForcedOn)
 
@@ -103,7 +103,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_set_forced_off(self, mock_module, mock_writer):
         """Test setting forced off."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         await relay.set_forced_off(True)
         assert isinstance(mock_writer.call_args[0][0], ForcedOff)
 
@@ -114,7 +114,7 @@ class TestRelay:
     @pytest.mark.asyncio
     async def test_set_inhibit(self, mock_module, mock_writer):
         """Test setting inhibit."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
         await relay.set_inhibit(True)
         assert isinstance(mock_writer.call_args[0][0], Inhibit)
 
@@ -124,7 +124,7 @@ class TestRelay:
 
     def test_get_config_parameters_gated_by_commands(self, mock_module, mock_writer):
         """Test force/inhibit params are only advertised when supported."""
-        relay = Relay(mock_module, 1, "Relay", False, True, mock_writer, 0x01)
+        relay = Relay(mock_module, 1, "Relay", False, True, 0x01)
 
         with patch.object(relay, "get_action_table", return_value=None):
             mock_module.has_command.side_effect = lambda code: (

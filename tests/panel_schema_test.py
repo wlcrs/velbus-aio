@@ -10,8 +10,8 @@ from velbusaio.panel_schema import get_module_type_schema, load_module_spec
 def test_load_module_spec_merges_global_properties() -> None:
     """Global properties should be present when not overridden by the module spec."""
     spec = load_module_spec(0x08)
-    assert "bus_error_off" in spec.get("Properties", {})
-    assert spec["Type"] == "VMB4RY"
+    assert "bus_error_off" in spec.properties
+    assert spec.type_name == "VMB4RY"
 
 
 def test_vmb4ry_schema_sections() -> None:
@@ -183,8 +183,9 @@ def test_vmb6pb20_schema_includes_channel_enable() -> None:
     )
     assert enable_section["channels"] == [1, 2, 3, 4, 5, 6, 7, 8]
     spec = load_module_spec(0x4C)
-    assert spec["Memory"]["ChannelEnable"]["channels"]["01"] == "0010"
-    assert spec["Memory"]["ChannelEnable"]["channels"]["02"] == "0024"
+    assert spec.memory.channel_enable is not None
+    assert spec.memory.channel_enable.channels[1] == 0x0010
+    assert spec.memory.channel_enable.channels[2] == 0x0024
 
 
 def test_vmb6pb20_schema_includes_input_v2_actions() -> None:

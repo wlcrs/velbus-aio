@@ -14,35 +14,37 @@ class TestSelectedProgram:
 
     def test_get_categories(self, mock_module, mock_writer):
         """Test selected program categories."""
-        prog = SelectedProgram(mock_module, "Program", mock_writer)
+        prog = SelectedProgram(mock_module, "Program")
         assert prog.get_categories() == ["select"]
 
     def test_get_class(self, mock_module, mock_writer):
         """Test getting selected program class."""
-        prog = SelectedProgram(mock_module, "Program", mock_writer)
+        prog = SelectedProgram(mock_module, "Program")
         assert prog.get_class() is None
 
     def test_get_options(self, mock_module, mock_writer):
         """Test getting available program options."""
-        prog = SelectedProgram(mock_module, "Program", mock_writer)
+        prog = SelectedProgram(mock_module, "Program")
         assert prog.get_options() == list(PROGRAM_SELECTION.values())
 
     @pytest.mark.asyncio
     async def test_get_selected_program(self, mock_module, mock_writer):
         """Test getting selected program."""
-        prog = SelectedProgram(mock_module, "Program", mock_writer)
+        prog = SelectedProgram(mock_module, "Program")
         await prog.update_value("Program 1")
+        assert prog.value == "Program 1"
         assert prog.get_selected_program() == "Program 1"
         assert prog.get_state() == "Program 1"
 
     @pytest.mark.asyncio
     async def test_set_selected_program(self, mock_module, mock_writer):
         """Test setting selected program."""
-        prog = SelectedProgram(mock_module, "Program", mock_writer)
+        prog = SelectedProgram(mock_module, "Program")
         program_name = list(PROGRAM_SELECTION.values())[0]
-        await prog.set_selected_program(program_name)
+        await prog.set(program_name)
 
         mock_writer.assert_called_once()
         sent_msg = mock_writer.call_args[0][0]
         assert isinstance(sent_msg, SelectProgramMessage)
         assert sent_msg.select_program == list(PROGRAM_SELECTION.keys())[0]
+        assert prog.value == program_name

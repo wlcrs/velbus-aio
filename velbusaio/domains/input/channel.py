@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
 
 from velbusaio.channels import Channel
 from velbusaio.config import ConfigParameter
 from velbusaio.const import (
-    ButtonLedState,
     ENERGY_KILO_WATT_HOUR,
     VOLUME_CUBIC_METER_HOUR,
     VOLUME_LITERS_HOUR,
+    ButtonLedState,
 )
 from velbusaio.exceptions import VelbusConfigError
 from velbusaio.message import Message
@@ -21,9 +19,6 @@ from velbusaio.messages.fast_blinking_led import FastBlinkingLedMessage
 from velbusaio.messages.push_button_status import PushButtonStatusMessage
 from velbusaio.messages.set_led import SetLedMessage
 from velbusaio.messages.slow_blinking_led import SlowBlinkingLedMessage
-
-if TYPE_CHECKING:
-    from velbusaio.module import Module
 
 _LED_STATE_MESSAGES: dict[ButtonLedState, type[Message]] = {
     ButtonLedState.OFF: ClearLedMessage,
@@ -65,14 +60,14 @@ class Button(Channel):
 
     def supports_channel_enable(self) -> bool:
         """Return True when EEPROM enable/disable is available."""
-        return self._module.get_channel_enable_spec(self._num) is not None
+        return self.module.get_channel_enable_spec(self._num) is not None
 
     async def get_channel_enabled(self, *, refresh: bool = False) -> bool | None:
         """Return EEPROM enable state (reaction time != disabled)."""
-        spec = self._module.get_channel_enable_spec(self._num)
+        spec = self.module.get_channel_enable_spec(self._num)
         if spec is None:
             return None
-        memory = self._module.get_memory()
+        memory = self.module.get_memory()
         if memory is None:
             return self.enabled
         value = await memory.read_byte(spec["address"], use_cache=not refresh)
@@ -84,12 +79,12 @@ class Button(Channel):
 
     async def set_channel_enabled(self, enabled: bool) -> None:
         """Enable or disable this channel via the reaction-time EEPROM byte."""
-        spec = self._module.get_channel_enable_spec(self._num)
+        spec = self.module.get_channel_enable_spec(self._num)
         if spec is None:
             raise VelbusConfigError(
                 f"Channel {self._num} does not support enable/disable"
             )
-        memory = self._module.get_memory()
+        memory = self.module.get_memory()
         if memory is None:
             raise RuntimeError("Module memory backend is not initialized")
         current = await memory.read_byte(spec["address"])
@@ -106,10 +101,6 @@ class Button(Channel):
         await memory.write_byte(spec["address"], value & 0xFF)
         self.enabled = enabled
         await self.maybe_status_update()
-
-    async def set_name_persistent(self, name: str) -> None:
-        """Write this channel's name to module EEPROM."""
-        await self._module.set_channel_name_persistent(self._num, name)
 
     def get_config_parameters(self) -> list[ConfigParameter]:
         """Return discoverable CONFIG parameters for this button channel."""
@@ -139,7 +130,7 @@ class Button(Channel):
         return params
 
     async def _get_name_value(self) -> str:
-        return self.get_name()
+        return self.name
 
     async def _get_enabled_value(self) -> bool:
         enabled = await self.get_channel_enabled()
@@ -162,28 +153,28 @@ class Button(Channel):
         if isinstance(state, str):
             state = ButtonLedState(state)
 
-        _mod_add = self.get_module_address("Button")
-        _chn_num = self._num - self._module.calc_channel_offset(_mod_add)
+        _mod_add = self._address
+        _chn_num = self._num - self.module.calc_channel_offset(_mod_add)
         msg = self.create_message(_LED_STATE_MESSAGES[state], address=_mod_add)
         msg.leds = [_chn_num]
-        await self._writer(msg)
+        await self.send_message(msg)
         self.led_state = state
         await self.maybe_status_update()
 
     async def press(self) -> None:
         """Press the button."""
-        _mod_add = self.get_module_address("Button")
-        _chn_num = self._num - self._module.calc_channel_offset(_mod_add)
+        _mod_add = self._address
+        _chn_num = self._num - self.module.calc_channel_offset(_mod_add)
         # send the just pressed
         msg = self.create_message(PushButtonStatusMessage, address=_mod_add)
         msg.closed = [_chn_num]
-        await self._writer(msg)
+        await self.send_message(msg)
         # wait
         await asyncio.sleep(0.3)
         # send the just released
         msg = self.create_message(PushButtonStatusMessage, address=_mod_add)
         msg.opened = [_chn_num]
-        await self._writer(msg)
+        await self.send_message(msg)
 
 
 class ButtonCounter(Button):
@@ -255,12 +246,7 @@ class ButtonCounter(Button):
 
     def _rate_from_pulse_interval(self) -> float:
         """Return the instantaneous rate derived from the interval between pulses."""
-        if (
-            not self.delay
-            or not self.pulses
-            or not self.Unit
-            or self.delay == 0xFFFF
-        ):
+        if not self.delay or not self.pulses or not self.Unit or self.delay == 0xFFFF:
             return round(0, 2)
         if self.Unit in {VOLUME_LITERS_HOUR, VOLUME_CUBIC_METER_HOUR}:
             return round((1000 * 3600) / (self.delay * self.pulses), 2)

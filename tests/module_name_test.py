@@ -17,6 +17,12 @@ class MockController:
     def connected(self):
         return True
 
+    def get_cache_dir(self):
+        return None
+
+    async def send(self, data):
+        pass
+
     def _add_on_connext_callback(self, callback):
         pass
 
@@ -52,9 +58,8 @@ async def test_module_name(name):
     for i in range(0, 16, 4):
         memory[0xF0 + i] = memory_bytes[i : i + 4]
 
-    m = Module(module_address, module_type)
+    m = Module(module_address, module_type, controller=MockController())
     m._use_cache = False
-    await m.initialize(MockWriter(), MockController())
     m._log = logging.getLogger("velbus-module")
 
     for addr, data in memory.items():

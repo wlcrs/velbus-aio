@@ -16,14 +16,12 @@ from typing import TYPE_CHECKING
 import anyio
 
 from velbusaio.command_registry import commandRegistry
-from velbusaio.const import (
-    SCAN_MODULEINFO_TIMEOUT_INITIAL,
-    SCAN_MODULEINFO_TIMEOUT_INTERVAL,
-    SCAN_MODULETYPE_TIMEOUT,
-)
+from velbusaio.const import SCAN_MODULEINFO_TIMEOUT_INTERVAL, SCAN_MODULETYPE_TIMEOUT
 from velbusaio.message import Message
 from velbusaio.messages.module_subtype import ModuleSubTypeMessage
-from velbusaio.messages.module_type import ModuleType2Message, ModuleTypeMessage
+from velbusaio.messages.module_type import ModuleTypeMessage
+from velbusaio.module_cache import load_module_from_cache
+from velbusaio.module_loader import load_module_from_bus
 
 if TYPE_CHECKING:
     from velbusaio.controller import Velbus
@@ -153,49 +151,38 @@ class PacketHandler:
                 self._log.info(
                     f"Found module at address {address} ({address:#02x}): {module_type_message.module_type_name()}"
                 )
-                # cache_file = pathlib.Path(f"{self._velbus.get_cache_dir()}/{address}.json")
-                # TODO: check if cached file module type is the same?
-                await self._handle_module_type(module_type_message)
-                async with self._scanLock:
-                    module = self._velbus.get_module(address)
-
-                if module is None:
-                    self._log.info(
-                        f"Module at address {address} ({address:#02x}) could not be loaded. Skipping it."
-                    )
-                    continue
 
                 try:
-                    self._log.debug(
-                        f"Module {module.get_address()} ({module.get_address():#02x}) detected: start loading"
+                    module = await load_module_from_cache(
+                        self._velbus.get_cache_dir(),
+                        address,
+                        controller=self._velbus,
+                        module_type=module_type_message.module_type,
+                        log=self._log,
                     )
-                    await asyncio.wait_for(
-                        module.load(from_cache=True),
-                        SCAN_MODULEINFO_TIMEOUT_INITIAL / 1000.0,
-                    )
-                    self._scan_delay_msec = module.get_initial_timeout()
-                    while self._scan_delay_msec > 50 and not await module.is_loaded():
-                        # self._log.debug(
-                        #    f"\t... waiting {self._scan_delay_msec} is_loaded={await module.is_loaded()}"
-                        # )
-                        self._scan_delay_msec = self._scan_delay_msec - 50
-                        await asyncio.sleep(0.05)
-                    module_scan_time = time.perf_counter() - start_module_scan
-                    self._log.info(
-                        f"Scan module {address} ({address:#02x}, {module.get_type_name()}) completed in {module_scan_time:.2f}, module loaded={await module.is_loaded()}"
-                    )
-                    await module.wait_for_status_messages()
-                    # A module can be discovered but never reach the fully
-                    # loaded state within the scan window (e.g. a DALI module
-                    # that stays unresponsive to its info/name requests). Fully
-                    # loaded modules already wrote their cache while loading;
-                    # for the rest we still persist a cache file here so every
-                    # found module is represented on disk.
-                    if not await module.is_loaded():
-                        self._log.warning(
-                            f"Module {address} ({address:#02x}) did not finish loading; writing cache anyway"
+                    if module is not None:
+                        self._velbus.register_module(module)
+                        await module._request_module_status()
+                        await self._velbus._on_modules_loaded(module)
+                    else:
+                        module = await load_module_from_bus(
+                            address,
+                            module_type_message.module_type,
+                            controller=self._velbus,
+                            serial=module_type_message.serial,
+                            memorymap=module_type_message.memory_map_version,
+                            build_year=module_type_message.build_year,
+                            build_week=module_type_message.build_week,
+                            log=self._log,
                         )
-                        await module.write_cache()
+                        self._velbus.register_module(module)
+                        await module.wait_for_status_messages()
+                        module_scan_time = time.perf_counter() - start_module_scan
+                        self._log.info(
+                            f"Scan module {address} ({address:#02x}, {module.get_type_name()}) completed in {module_scan_time:.2f}"
+                        )
+                        await self._velbus.save_module_cache(module)
+                        await self._velbus._on_modules_loaded(module)
                 except TimeoutError:
                     self._log.error(
                         f"Module {address} ({address:#02x}) did not respond to info requests after successful type request"
@@ -304,33 +291,6 @@ class PacketHandler:
                     await module.on_message(msg)
                 else:
                     self._log.warning(f"NOT FOUND IN command_registry: {rawmsg}")
-
-    async def _handle_module_type(
-        self, msg: ModuleTypeMessage | ModuleType2Message
-    ) -> None:
-        """Load the module data."""
-        if msg is not None:
-            module = self._velbus.get_module(msg.address)
-            if module is None:
-                # data = keys_exists(self.pdata, "ModuleTypes", h2(msg.module_type))
-                # if not data:
-                #    self._log.warning(f"Module not recognized: {msg.module_type}")
-                #    return
-                await self._velbus.add_module(
-                    msg.address,
-                    msg.module_type,
-                    memorymap=msg.memory_map_version,
-                    build_year=msg.build_year,
-                    build_week=msg.build_week,
-                    serial=msg.serial,
-                )
-            else:
-                self._log.debug(
-                    f"***Module already exists scanAddr={self._modulescan_address} addr={msg.address} {msg}"
-                )
-
-        # else:
-        #    self._log.debug("*** handle_module_type called without response message")
 
     def _handle_module_subtype(self, msg: ModuleSubTypeMessage) -> None:
         """Handle a received module subtype packet."""

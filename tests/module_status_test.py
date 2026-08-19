@@ -48,20 +48,18 @@ async def test_module_status_selected_program(module_type):
     cache_dir = get_cache_dir()
     pathlib.Path(cache_dir).mkdir(parents=True, exist_ok=True)
 
-    velbus = MagicMock()
+    velbus = Velbus("")  # Dummy connection
     m = Module(
         module_address,
         module_type,
-        cache_dir=get_cache_dir(),
+        controller=velbus,
     )
-    velbus = Velbus("")  # Dummy connection
-    await m.initialize(velbus.send, velbus)
 
     # load the module with dummy channels
     for chan in range(1, 9):
-        m._channels[chan] = Channel(None, None, None, False, False, None, None)
-    m._properties["light_value"] = LightValue(m, "Light", velbus.send)
-    m._properties["selected_program"] = SelectedProgram(m, "program", velbus.send)
+        m._channels[chan] = Channel(None, None, None, False, False, None)
+    m._properties["light_value"] = LightValue(m, "Light")
+    m._properties["selected_program"] = SelectedProgram(m, "program")
 
     messages_to_test = [
         ModuleStatusMessage2,

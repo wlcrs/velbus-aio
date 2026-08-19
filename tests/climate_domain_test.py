@@ -21,14 +21,13 @@ from velbusaio.module import Module
 
 
 @pytest.mark.asyncio
-async def test_climate_domain_status_routing():
+async def test_climate_domain_status_routing(mock_controller):
     """Test dispatching TempSensorStatus to Temperature and ThermostatChannel."""
-    module = Module(1, 0x34)
-    writer = AsyncMock()
+    module = Module(1, 0x34, controller=mock_controller)
 
-    temp_channel = Temperature(module, 34, "Temperature", False, True, writer, 1)
-    heater_channel = ThermostatChannel(module, 35, "Heater", False, True, writer, 1)
-    boost_channel = ThermostatChannel(module, 36, "Boost", False, True, writer, 1)
+    temp_channel = Temperature(module, 34, "Temperature", False, True, 1)
+    heater_channel = ThermostatChannel(module, 35, "Heater", False, True, 1)
+    boost_channel = ThermostatChannel(module, 36, "Boost", False, True, 1)
 
     module._channels[34] = temp_channel
     module._channels[35] = heater_channel
@@ -43,7 +42,7 @@ async def test_climate_domain_status_routing():
     status_msg.heater = True
     status_msg.boost = False
 
-    await module.dispatch_message(status_msg)
+    await module.on_message(status_msg)
 
     assert temp_channel.get_climate_target() == 21.5
     assert temp_channel.get_climate_preset() == "comfort"
@@ -53,12 +52,11 @@ async def test_climate_domain_status_routing():
 
 
 @pytest.mark.asyncio
-async def test_climate_domain_sensor_temperature():
+async def test_climate_domain_sensor_temperature(mock_controller):
     """Test routing SensorTemperatureMessage to Temperature channel."""
-    module = Module(1, 0x34)
-    writer = AsyncMock()
+    module = Module(1, 0x34, controller=mock_controller)
 
-    temp_channel = Temperature(module, 34, "Temperature", False, True, writer, 1)
+    temp_channel = Temperature(module, 34, "Temperature", False, True, 1)
     module._channels[34] = temp_channel
 
     msg = SensorTemperatureMessage(1)
@@ -66,7 +64,7 @@ async def test_climate_domain_sensor_temperature():
     msg.min = 18.0
     msg.max = 25.0
 
-    await module.dispatch_message(msg)
+    await module.on_message(msg)
 
     assert temp_channel.get_state() == 22.25
     assert temp_channel.get_min() == 18.0
@@ -74,11 +72,10 @@ async def test_climate_domain_sensor_temperature():
 
 
 @pytest.mark.asyncio
-async def test_climate_domain_settings_parts():
+async def test_climate_domain_settings_parts(mock_controller):
     """Test routing TempSensorSettingsPart1-4 directly to Temperature."""
-    module = Module(1, 0x34)
-    writer = AsyncMock()
-    temp_channel = Temperature(module, 34, "Temperature", False, True, writer, 1)
+    module = Module(1, 0x34, controller=mock_controller)
+    temp_channel = Temperature(module, 34, "Temperature", False, True, 1)
     module._channels[34] = temp_channel
 
     part1 = TempSensorSettingsPart1(1)
@@ -88,7 +85,7 @@ async def test_climate_domain_settings_parts():
     part1.antifreeze_heating = 7.0
     part1.temp_difference = 2.0
     part1.hysteresis = 0.5
-    await module.dispatch_message(part1)
+    await module.on_message(part1)
 
     assert temp_channel.get_setting("comfort_heating") == 21.5
     assert temp_channel.get_setting("day_heating") == 20.0
@@ -99,7 +96,7 @@ async def test_climate_domain_settings_parts():
     part2.comfort_cooling = 24.0
     part2.default_sleep_timer = 45
     part2.autosend_interval = 60
-    await module.dispatch_message(part2)
+    await module.on_message(part2)
 
     assert temp_channel.get_setting("comfort_cooling") == 24.0
     assert temp_channel.get_setting("default_sleep_timer") == 45
@@ -108,41 +105,32 @@ async def test_climate_domain_settings_parts():
     part3 = TempSensorSettingsPart3(1)
     part3.alarm_low = 5.0
     part3.alarm_high = 35.0
-    await module.dispatch_message(part3)
+    await module.on_message(part3)
 
     assert temp_channel.get_setting("alarm_low") == 5.0
     assert temp_channel.get_setting("alarm_high") == 35.0
 
     part4 = TempSensorSettingsPart4(1)
     part4.min_switching_time = 3
-    await module.dispatch_message(part4)
+    await module.on_message(part4)
 
     assert temp_channel.get_setting("min_switching_time") == 3
 
 
-@pytest.mark.asyncio
-async def test_register_message_handler_type_deduction():
-    """Test that register_message_handler deduces message types from single and union annotations."""
-    module = Module(1, 0x34)
-    received_msgs: list[Message] = []
+def test_extract_message_types_deduction():
+    """Test that extract_message_types deduces message types from single and union annotations."""
+    from velbusaio.message_router import extract_message_types
 
-    async def single_type_handler(message: SensorTemperatureMessage) -> None:
-        received_msgs.append(message)
+    def single_type_handler(module: Any, message: SensorTemperatureMessage) -> None:
+        pass
 
-    async def union_type_handler(
-        message: TempSensorSettingsPart1 | TempSensorStatusMessage,
+    def union_type_handler(
+        module: Any, message: TempSensorSettingsPart1 | TempSensorStatusMessage
     ) -> None:
-        received_msgs.append(message)
+        pass
 
-    module.register_message_handler(single_type_handler)
-    module.register_message_handler(union_type_handler)
-
-    msg_temp = SensorTemperatureMessage(1)
-    msg_status = TempSensorStatusMessage(1)
-    msg_part1 = TempSensorSettingsPart1(1)
-
-    assert await module.dispatch_message(msg_temp) is True
-    assert await module.dispatch_message(msg_status) is True
-    assert await module.dispatch_message(msg_part1) is True
-
-    assert received_msgs == [msg_temp, msg_status, msg_part1]
+    assert extract_message_types(single_type_handler) == (SensorTemperatureMessage,)
+    assert extract_message_types(union_type_handler) == (
+        TempSensorSettingsPart1,
+        TempSensorStatusMessage,
+    )

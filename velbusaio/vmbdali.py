@@ -1,14 +1,15 @@
 """VmbDali module implementation for Velbus DALI devices."""
 
-# ruff: noqa: PLR0917
-
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from velbusaio.channels import Channel, Dimmer
 from velbusaio.command_registry import commandRegistry
 from velbusaio.const import PRIORITY_LOW
+
+if TYPE_CHECKING:
+    from velbusaio.controller import Controller
 from velbusaio.message import Message
 from velbusaio.messages.channel_name_request import (
     COMMAND_CODE as CHANNEL_NAME_REQUEST_COMMAND_CODE,
@@ -43,23 +44,22 @@ class VmbDali(Module):
         self,
         module_address: int,
         module_type: int,
+        *,
+        controller: Controller,
         serial: int | str | None = None,
         memorymap: int | None = None,
         build_year: int | None = None,
         build_week: int | None = None,
-        cache_dir: str | None = None,
-        on_module_found: Callable[[Module], Awaitable[None]] | None = None,
     ) -> None:
         """Initialize DALI module."""
         super().__init__(
             module_address,
             module_type,
-            serial,
-            memorymap,
-            build_year,
-            build_week,
-            cache_dir,
-            on_module_found,
+            controller=controller,
+            serial=serial,
+            memorymap=memorymap,
+            build_year=build_year,
+            build_week=build_week,
         )
         self.group_members: dict[int, set[int]] = {}
 
@@ -67,7 +67,7 @@ class VmbDali(Module):
         """Get initial timeout for loading this module."""
         return 100000
 
-    async def _load_default_channels(self) -> None:
+    def _initialize_channels(self) -> None:
         for chan in range(1, 64 + 1):
             self._channels[chan] = Channel(
                 module=self,
@@ -75,12 +75,11 @@ class VmbDali(Module):
                 name="placeholder",
                 nameEditable=True,
                 subDevice=True,
-                writer=self._writer,
                 address=self._address,
             )
-            # Placeholders will keep this module loading
-            # Until the DaliDeviceSettings messages either delete or replace these placeholder's
-            # with actual channels
+
+    async def _request_channel_name(self) -> None:
+        """Request DALI channels on bus load."""
         await self._request_dali_channels()
 
     async def _request_dali_channels(self) -> None:
@@ -91,7 +90,7 @@ class VmbDali(Module):
         msg.priority = PRIORITY_LOW
         msg.channel = 81  # all
         msg.settings = None  # all
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def on_message(self, message: Message) -> None:
         """Process received message."""
@@ -100,41 +99,21 @@ class VmbDali(Module):
                 if message.data.device_type == DaliDeviceType.NoDevicePresent:
                     if message.channel in self._channels:
                         del self._channels[message.channel]
-                else:
-                    # Any present DALI device (LedModule, Dimmer, and the other
-                    # lamp types) is exposed as a dimmable channel. Only
-                    # NoDevicePresent slots are removed above.
-                    cache = self._loaded_cache
-                    if (
-                        "channels" in cache
-                        and str(message.channel) in cache["channels"]
-                        and cache["channels"][str(message.channel)]["type"] == "Dimmer"
-                    ):
-                        # If we have a cached dimmer channel, use that name
-                        name = cache["channels"][str(message.channel)]["name"]
-                        self._channels[message.channel] = Dimmer(
-                            self,
-                            message.channel,
-                            name,
-                            False,  # set False to enable an already loaded Dimmer
-                            True,
-                            self._writer,
-                            self._address,
-                            slider_scale=254,
-                        )
-                    elif self._channels.get(message.channel).__class__ != Dimmer:
-                        # New or changed type, replace channel:
-                        self._channels[message.channel] = Dimmer(
-                            self,
-                            message.channel,
-                            "",
-                            True,
-                            True,
-                            self._writer,
-                            self._address,
-                            slider_scale=254,
-                        )
-                        await self._request_single_channel_name(message.channel)
+                # Any present DALI device (LedModule, Dimmer, and the other
+                # lamp types) is exposed as a dimmable channel. Only
+                # NoDevicePresent slots are removed above.
+                elif self._channels.get(message.channel).__class__ != Dimmer:
+                    # New or changed type, replace channel:
+                    self._channels[message.channel] = Dimmer(
+                        self,
+                        message.channel,
+                        "",
+                        True,
+                        True,
+                        self._address,
+                        slider_scale=254,
+                    )
+                    await self._request_single_channel_name(message.channel)
 
             elif isinstance(message.data, MemberOfGroupMsg):
                 for group in range(15 + 1):
@@ -181,11 +160,6 @@ class VmbDali(Module):
             return await super().on_message(message)
         return None
 
-    async def _request_channel_name(self) -> None:
-        # Channel names are requested after channel scan
-        # don't do them here (at initialization time)
-        pass
-
     async def _request_single_channel_name(self, channel_num: int) -> None:
         msg_type = commandRegistry.get_command(
             CHANNEL_NAME_REQUEST_COMMAND_CODE, self.get_type()
@@ -195,4 +169,4 @@ class VmbDali(Module):
         msg = msg_type(self._address)
         msg.priority = PRIORITY_LOW
         msg.channels = channel_num
-        await self._writer(msg)
+        await self.send_message(msg)

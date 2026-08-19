@@ -32,6 +32,12 @@ class MockController:
     def connected(self):
         return True
 
+    def get_cache_dir(self):
+        return None
+
+    async def send(self, data):
+        pass
+
     def _add_on_connext_callback(self, callback):
         pass
 
@@ -46,9 +52,14 @@ class MockController:
 
 
 async def _build(module_type, year, week):
-    module = Module(1, module_type, build_year=year, build_week=week)
+    module = Module(
+        1,
+        module_type,
+        controller=MockController(),
+        build_year=year,
+        build_week=week,
+    )
     module._use_cache = False
-    await module.initialize(MockWriter(), MockController())
     return module
 
 

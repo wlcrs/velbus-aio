@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import pytest
 
 from velbusaio.module import Module
@@ -17,7 +19,7 @@ from velbusaio.module import Module
     ],
 )
 def test_module_serial_is_normalized(serial, expected):
-    m = Module(1, 0x0E, serial=serial)
+    m = Module(1, 0x0E, controller=Mock(), serial=serial)
 
     assert m.get_serial() == expected
     assert m.serial == expected
@@ -26,6 +28,6 @@ def test_module_serial_is_normalized(serial, expected):
 
 
 def test_module_factory_serial_is_normalized():
-    m = Module.factory(1, 0x0E, 12345)
+    m = Module.factory(1, 0x0E, controller=Mock(), serial=12345)
 
     assert m.get_serial() == "12345"

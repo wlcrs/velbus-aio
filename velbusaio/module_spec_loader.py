@@ -1,7 +1,5 @@
 """Hardware module spec loader and build compatibility checking for Velbus modules."""
 
-# ruff: noqa: PLR0917
-
 from __future__ import annotations
 
 import importlib.resources
@@ -9,9 +7,8 @@ import json
 import logging
 from typing import Any
 
-import anyio
-
 from velbusaio.helpers import h2
+from velbusaio.module_spec import ModuleSpec
 
 
 def format_build(build_year: int | None, build_week: int | None) -> str | None:
@@ -26,11 +23,14 @@ def check_memory_map_outdated(
     module_type: int,
     build_year: int | None,
     build_week: int | None,
-    spec_data: dict[str, Any],
+    spec_data: ModuleSpec | dict[str, Any],
     log: logging.Logger,
 ) -> bool:
     """Determine whether the module firmware predates its spec's memory map."""
-    expected = spec_data.get("MemoryMapBuild")
+    if isinstance(spec_data, ModuleSpec):
+        expected = spec_data.memory_map_build
+    else:
+        expected = spec_data.get("MemoryMapBuild")
     reported = format_build(build_year, build_week)
     if expected is None or reported is None:
         return False
@@ -52,28 +52,45 @@ def check_memory_map_outdated(
     return True
 
 
-async def load_module_spec(module_type: int, log: logging.Logger) -> dict[str, Any]:
-    """Load and merge global.json and module-specific spec JSON."""
+_SPEC_CACHE: dict[int, ModuleSpec] = {}
+
+
+def load_module_spec(
+    module_type: int, log: logging.Logger | None = None
+) -> ModuleSpec:
+    """Load and merge global.json and module-specific spec JSON, returning a ModuleSpec."""
+    if module_type in _SPEC_CACHE:
+        return _SPEC_CACHE[module_type]
+
     global_data: dict[str, Any] = {}
+    try:
+        global_path = importlib.resources.files("velbusaio").joinpath(
+            "module_spec/global.json"
+        )
+        if global_path.is_file():
+            global_data = json.loads(global_path.read_text(encoding="utf-8"))
+            if log:
+                log.debug("Global module spec loaded")
+        elif log:
+            log.debug("No global module spec found")
+    except Exception:
+        if log:
+            log.debug("No global module spec found")
+
     data: dict[str, Any] = {}
-
     try:
-        with importlib.resources.path("velbusaio", "module_spec/global.json") as fspath:
-            async with await anyio.open_file(fspath) as global_file:
-                global_data = json.loads(await global_file.read())
-        log.debug("Global module spec loaded")
-    except FileNotFoundError:
-        log.debug("No global module spec found")
-
-    try:
-        with importlib.resources.path(
-            "velbusaio", f"module_spec/{h2(module_type)}.json"
-        ) as fspath:
-            async with await anyio.open_file(fspath) as protocol_file:
-                data = json.loads(await protocol_file.read())
-        log.debug("Module spec %s loaded", h2(module_type))
-    except FileNotFoundError:
-        log.warning("No module spec for %s", h2(module_type))
+        spec_path = importlib.resources.files("velbusaio").joinpath(
+            f"module_spec/{h2(module_type)}.json"
+        )
+        if spec_path.is_file():
+            data = json.loads(spec_path.read_text(encoding="utf-8"))
+            if log:
+                log.debug("Module spec %s loaded", h2(module_type))
+        elif log:
+            log.warning("No module spec for %s", h2(module_type))
+    except Exception:
+        if log:
+            log.warning("No module spec for %s", h2(module_type))
 
     # Merge global data into module data (module-specific takes precedence)
     for key, value in global_data.items():
@@ -83,4 +100,6 @@ async def load_module_spec(module_type: int, log: logging.Logger) -> dict[str, A
             # Deep merge for nested dictionaries
             data[key] = {**value, **data[key]}
 
-    return data
+    spec = ModuleSpec.from_dict(data)
+    _SPEC_CACHE[module_type] = spec
+    return spec

@@ -63,19 +63,19 @@ class Blind(Channel):
         """Open the blind."""
         msg = self.create_message(CoverUpMessage)
         msg.channel = self._num
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def close(self) -> None:
         """Close the blind."""
         msg = self.create_message(CoverDownMessage)
         msg.channel = self._num
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def stop(self) -> None:
         """Stop the blind."""
         msg = self.create_message(CoverOffMessage)
         msg.channel = self._num
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_position(self, position: int) -> None:
         """Set the blind to a specific position."""
@@ -85,4 +85,4 @@ class Blind(Channel):
         msg = self.create_message(CoverPosMessage)
         msg.channel = self._num
         msg.position = position
-        await self._writer(msg)
+        await self.send_message(msg)

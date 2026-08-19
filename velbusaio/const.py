@@ -3,6 +3,8 @@
 Author: Maikel Punie <maikel.punie@gmail.com>
 """
 
+from __future__ import annotations
+
 from enum import IntEnum, StrEnum
 from typing import Final
 

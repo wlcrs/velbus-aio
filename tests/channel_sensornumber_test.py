@@ -10,18 +10,18 @@ class TestSensorNumber:
 
     def test_get_categories(self, mock_module, mock_writer):
         """Test sensor number categories."""
-        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
+        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
         assert sensor.get_categories() == ["sensor"]
 
     def test_get_class(self, mock_module, mock_writer):
         """Test getting sensor class."""
-        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
+        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
         assert sensor.get_class() is None
 
     @pytest.mark.asyncio
     async def test_get_unit(self, mock_module, mock_writer):
         """Test getting sensor unit."""
-        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
+        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
         sensor.unit = "°C"
         await sensor.maybe_status_update()
         assert sensor.get_unit() == "°C"
@@ -29,7 +29,7 @@ class TestSensorNumber:
     @pytest.mark.asyncio
     async def test_get_state(self, mock_module, mock_writer):
         """Test getting sensor state."""
-        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
+        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
         sensor.cur = 42.75
         await sensor.maybe_status_update()
         assert sensor.get_state() == 42.75
@@ -37,7 +37,7 @@ class TestSensorNumber:
     @pytest.mark.asyncio
     async def test_get_sensor_type(self, mock_module, mock_writer):
         """Test getting sensor type."""
-        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
+        sensor = SensorNumber(mock_module, 1, "Sensor", False, True, 0x01)
         sensor.sensor_type = "humidity"
         await sensor.maybe_status_update()
         assert sensor.get_sensor_type() == "humidity"

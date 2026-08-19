@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from velbusaio.channels import Channel
 from velbusaio.config import ConfigParameter
-from velbusaio.message import Message
 from velbusaio.messages.cancel_forced_off import CancelForcedOff
 from velbusaio.messages.cancel_forced_on import CancelForcedOn
 from velbusaio.messages.cancel_inhibit import CancelInhibit
@@ -41,12 +38,11 @@ class Dimmer(Channel):
         name: str,
         nameEditable: bool,
         subDevice: bool,
-        writer: Callable[[Message], Awaitable[None]],
         address: int,
         slider_scale: int = 100,
     ):
         """Initialize the dimmer channel."""
-        super().__init__(module, num, name, nameEditable, subDevice, writer, address)
+        super().__init__(module, num, name, nameEditable, subDevice, address)
         self.slider_scale = slider_scale
 
     async def update_dimmer_state(self, state: int) -> None:
@@ -72,14 +68,14 @@ class Dimmer(Channel):
         msg.dimmer_state = int(slider * self.slider_scale / 100)
         msg.dimmer_transitiontime = int(transitiontime)
         msg.dimmer_channels = [self._num]
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def restore_dimmer_state(self, transitiontime: int = 0) -> None:
         """Restore dimmer to last known state."""
         msg = self.create_message(RestoreDimmerMessage)
         msg.dimmer_transitiontime = int(transitiontime)
         msg.dimmer_channels = [self._num]
-        await self._writer(msg)
+        await self.send_message(msg)
 
 
 class Relay(Channel):
@@ -152,27 +148,27 @@ class Relay(Channel):
 
     def supports_inhibit(self) -> bool:
         """Return True when inhibit / cancel-inhibit commands are available."""
-        return self._module.has_command(Inhibit._command_code)
+        return self.module.has_command(Inhibit._command_code)
 
     def supports_forced_on(self) -> bool:
         """Return True when forced-on / cancel-forced-on commands are available."""
-        return self._module.has_command(ForcedOn._command_code)
+        return self.module.has_command(ForcedOn._command_code)
 
     def supports_forced_off(self) -> bool:
         """Return True when forced-off / cancel-forced-off commands are available."""
-        return self._module.has_command(ForcedOff._command_code)
+        return self.module.has_command(ForcedOff._command_code)
 
     async def turn_on(self) -> None:
         """Send the turn on message."""
         msg = self.create_message(SwitchRelayOnMessage)
         msg.relay_channels = [self._num]
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def turn_off(self) -> None:
         """Send the turn off message."""
         msg = self.create_message(SwitchRelayOffMessage)
         msg.relay_channels = [self._num]
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_forced_on(self, state: bool) -> None:
         """Set or cancel forced on."""
@@ -180,7 +176,7 @@ class Relay(Channel):
         msg.channel = self._num
         if state:
             msg.delay_time = 0xFFFFFF  # Permanent
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_forced_off(self, state: bool) -> None:
         """Set or cancel forced off."""
@@ -188,7 +184,7 @@ class Relay(Channel):
         msg.channel = self._num
         if state:
             msg.delay_time = 0xFFFFFF  # Permanent
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_inhibit(self, state: bool) -> None:
         """Set or cancel inhibit."""
@@ -196,11 +192,7 @@ class Relay(Channel):
         msg.channel = self._num
         if state:
             msg.delay_time = 0xFFFFFF  # Permanent
-        await self._writer(msg)
-
-    async def set_name_persistent(self, name: str) -> None:
-        """Write this channel's name to module EEPROM."""
-        await self._module.set_channel_name_persistent(self._num, name)
+        await self.send_message(msg)
 
     async def get_normal_closed(self, *, refresh: bool = False) -> bool | None:
         """Return True when this relay is programmed as normally closed."""
@@ -280,7 +272,7 @@ class Relay(Channel):
         return params
 
     async def _get_name_value(self) -> str:
-        return self.get_name()
+        return self.name
 
     async def _get_inhibit_value(self) -> bool:
         return self.is_inhibit()
@@ -318,7 +310,7 @@ class EdgeLit(Channel):
         msg.apply_to_right_edge = right
         msg.apply_to_bottom_edge = bottom
         msg.apply_to_all_pages = True
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_color(
         self,
@@ -341,7 +333,7 @@ class EdgeLit(Channel):
         msg.apply_to_bottom_edge = bottom
         msg.apply_to_all_pages = True
         msg.custom_color_priority = priority
-        await self._writer(msg)
+        await self.send_message(msg)
 
     async def set_rgbw(
         self,
@@ -376,7 +368,7 @@ class EdgeLit(Channel):
             msg_apply.apply_to_right_edge = right
             msg_apply.apply_to_bottom_edge = bottom
             msg_apply.apply_to_all_pages = True
-            await self._writer(msg_apply)
+            await self.send_message(msg_apply)
             return
 
         msg_palette = self.create_message(SetCustomColorMessage)
@@ -386,7 +378,7 @@ class EdgeLit(Channel):
         msg_palette.blue = blue
         msg_palette.white_mode = white > 128
         msg_palette.saturation = 127
-        await self._writer(msg_palette)
+        await self.send_message(msg_palette)
 
         msg_apply = self.create_message(SetEdgeColorMessage)
         msg_apply.apply_background_color = True
@@ -397,4 +389,4 @@ class EdgeLit(Channel):
         msg_apply.apply_to_right_edge = right
         msg_apply.apply_to_bottom_edge = bottom
         msg_apply.apply_to_all_pages = True
-        await self._writer(msg_apply)
+        await self.send_message(msg_apply)

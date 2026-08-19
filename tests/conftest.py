@@ -1,5 +1,6 @@
-"""Shared pytest fixtures for all test files"""
+from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -14,9 +15,26 @@ def pytest_configure(config):
 
 
 @pytest.fixture
-def mock_module():
+def mock_writer():
+    """Create a mock writer for testing."""
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_controller(mock_writer):
+    """Create a mock controller for testing."""
+    controller = Mock()
+    controller.send = mock_writer
+    controller.get_cache_dir.return_value = None
+    controller._on_modules_loaded = AsyncMock()
+    return controller
+
+
+@pytest.fixture
+def mock_module(mock_writer, mock_controller):
     """Create a mock module for testing."""
     module = Mock()
+    module._controller = mock_controller
     module.get_address.return_value = 0x01
     module.get_type.return_value = 0x01
     module.get_type_name.return_value = "TestModule"
@@ -25,22 +43,12 @@ def mock_module():
     module.get_sw_version.return_value = "1.0.0"
     module.get_name.return_value = "Test Module Name"
     module.calc_channel_offset.return_value = 0
-    module.is_connected.return_value = True
-    module.on_connect = Mock()
-    module.remove_on_connect = Mock()
-    module.on_disconnect = Mock()
-    module.remove_on_disconnect = Mock()
     module.has_command = Mock(return_value=True)
     module.create_message.side_effect = (
         lambda msg_cls, address=None: msg_cls(0x01 if address is None else address)
     )
+    module.send_message = mock_writer
     return module
-
-
-@pytest.fixture
-def mock_writer():
-    """Create a mock writer for testing."""
-    return AsyncMock()
 
 
 def assert_roundtrip(

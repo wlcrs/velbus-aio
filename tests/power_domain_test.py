@@ -22,13 +22,12 @@ from velbusaio.properties import (
 
 
 @pytest.mark.asyncio
-async def test_power_domain_psu_values():
+async def test_power_domain_psu_values(mock_controller):
     """Test PSU volt/amp/watt properties routing."""
-    module = Module(1, 0x30)
-    writer = AsyncMock()
-    v1 = PSUVoltage(module, "psu_1_volt", writer)
-    c1 = PSUCurrent(module, "psu_1_amp", writer)
-    p1 = PSUPower(module, "psu_1_watt", writer)
+    module = Module(1, 0x30, controller=mock_controller)
+    v1 = PSUVoltage(module, "psu_1_volt")
+    c1 = PSUCurrent(module, "psu_1_amp")
+    p1 = PSUPower(module, "psu_1_watt")
 
     module._properties["psu_1_volt"] = v1
     module._properties["psu_1_amp"] = c1
@@ -40,21 +39,23 @@ async def test_power_domain_psu_values():
     msg.amp = 2.5
     msg.watt = 34.5
 
-    await module.dispatch_message(msg)
+    await module.on_message(msg)
 
+    assert v1.value == 13.8
+    assert c1.value == 2.5
+    assert p1.value == 34.5
     assert v1.get_state() == 13.8
     assert c1.get_state() == 2.5
     assert p1.get_state() == 34.5
 
 
 @pytest.mark.asyncio
-async def test_power_domain_bus_error_counters():
+async def test_power_domain_bus_error_counters(mock_controller):
     """Test CAN bus error counter property routing."""
-    module = Module(1, 0x30)
-    writer = AsyncMock()
-    off_prop = BusErrorOff(module, "bus_off", writer)
-    rx_prop = BusErrorRx(module, "bus_rx", writer)
-    tx_prop = BusErrorTx(module, "bus_tx", writer)
+    module = Module(1, 0x30, controller=mock_controller)
+    off_prop = BusErrorOff(module, "bus_off")
+    rx_prop = BusErrorRx(module, "bus_rx")
+    tx_prop = BusErrorTx(module, "bus_tx")
 
     module._properties["bus_off"] = off_prop
     module._properties["bus_rx"] = rx_prop
@@ -65,8 +66,11 @@ async def test_power_domain_bus_error_counters():
     msg.receive_error_counter = 3
     msg.transmit_error_counter = 1
 
-    await module.dispatch_message(msg)
+    await module.on_message(msg)
 
+    assert off_prop.value == 0
+    assert rx_prop.value == 3
+    assert tx_prop.value == 1
     assert off_prop.get_state() == 0
     assert rx_prop.get_state() == 3
     assert tx_prop.get_state() == 1
