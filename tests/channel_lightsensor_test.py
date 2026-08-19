@@ -17,5 +17,5 @@ class TestLightSensor:
     async def test_get_state(self, mock_module, mock_writer):
         """Test getting light sensor state."""
         sensor = LightValue(mock_module, "Light", mock_writer)
-        await sensor.update({"cur": 125.5})
+        await sensor.update_value(125.5)
         assert sensor.get_state() == 125.5

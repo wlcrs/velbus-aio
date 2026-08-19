@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from velbusaio.const import ButtonLedState
 from velbusaio.message_fields import ChannelsField, DeclarativeMessage
 
 COMMAND_CODE = 0xF4
@@ -19,3 +20,13 @@ class UpdateLedStatusMessage(DeclarativeMessage):
     led_on = ChannelsField(0)
     led_slow_blinking = ChannelsField(1)
     led_fast_blinking = ChannelsField(2)
+
+    def get_led_state(self, channel: int) -> ButtonLedState:
+        """Return the LED state for a given channel."""
+        if channel in self.led_fast_blinking:
+            return ButtonLedState.FAST
+        if channel in self.led_slow_blinking:
+            return ButtonLedState.SLOW
+        if channel in self.led_on:
+            return ButtonLedState.ON
+        return ButtonLedState.OFF

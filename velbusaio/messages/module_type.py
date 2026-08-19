@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-import struct
-
 from velbusaio.command_registry import MODULE_DIRECTORY
 from velbusaio.message_fields import ByteField, ComputedField, DeclarativeMessage
 
@@ -31,7 +29,6 @@ def _parse_serial(data: bytes) -> int:
     if data[0] in MODULES_WITHOUT_SERIAL:
         return 0
     return (data[1] << 8) | data[2]
-
 
 
 class ModuleTypeMessage(DeclarativeMessage):

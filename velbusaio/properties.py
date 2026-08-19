@@ -6,19 +6,43 @@ author: Maikel Punie <maikel.punie@gmail.com>
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from velbusaio.baseItem import BaseItem
-from velbusaio.command_registry import commandRegistry
 from velbusaio.message import Message
+from velbusaio.messages.memo_text import MemoTextMessage
 from velbusaio.messages.module_status import PROGRAM_SELECTION
+from velbusaio.messages.select_program import SelectProgramMessage
 
 if TYPE_CHECKING:
     from velbusaio.module import Module
 
+T = TypeVar("T")
 
-class Property(BaseItem):
-    """Base class for module-level properties."""
+
+class Property(BaseItem, Generic[T]):
+    """Base class for module-level properties holding a value of type T."""
+
+    cur: T | None = None
+
+    def __init__(
+        self,
+        module: Module,
+        name: str,
+        writer: Callable[[Message], Awaitable[None]],
+        default: T | None = None,
+    ) -> None:
+        super().__init__(module, name, writer)
+        self.cur = default
+
+    async def update_value(self, cur: T) -> None:
+        """Update property value."""
+        self.cur = cur
+        await self.maybe_status_update()
+
+    def get_state(self) -> T | None:
+        """Return the current state of the property."""
+        return self.cur
 
     def get_channel_number(self) -> int:
         """Return the channel number of this property (always 0)."""
@@ -52,19 +76,17 @@ class Property(BaseItem):
         return type(self).__name__
 
 
-class PSUPower(Property):
+class PSUPower(Property[float]):
     """PSU Power property."""
 
     def __init__(
         self, module: Module, name: str, writer: Callable[[Message], Awaitable[None]]
-    ):
-        """Initialize PSU power property with per-instance current value."""
-        super().__init__(module, name, writer)
-        self._cur: float = 0.0
+    ) -> None:
+        super().__init__(module, name, writer, default=0.0)
 
     def get_state(self) -> float:
         """Return the current state of the PSU power."""
-        return round(self._cur, 2)
+        return round(self.cur or 0.0, 2)
 
 
 class PSUVoltage(PSUPower):
@@ -79,7 +101,7 @@ class PSULoad(PSUPower):
     """PSU Load property."""
 
 
-class MemoText(Property):
+class MemoText(Property[str]):
     """Memo text property."""
 
     def get_categories(self) -> list[str]:
@@ -88,29 +110,34 @@ class MemoText(Property):
 
     async def set(self, txt: str) -> None:
         """Set the memo text."""
-        cls = commandRegistry.get_command(0xAC, self._module.get_type())
-        msg = cls(self.get_module_address())
+        msg = self._module.create_message(
+            MemoTextMessage, address=self.get_module_address()
+        )
         msgcntr = 0
+        current_name = ""
         for char in txt:
-            msg.memo_text += char
-            if len(msg.memo_text) >= 5:
-                msgcntr += 5
+            current_name += char
+            if len(current_name) >= 5:
+                msg.name = current_name
                 await self._writer(msg)
-                msg = cls(self.get_module_address())
+                msgcntr += 5
+                msg = self._module.create_message(
+                    MemoTextMessage, address=self.get_module_address()
+                )
                 msg.start = msgcntr
-        if msg.memo_text:
+                current_name = ""
+        if current_name:
+            msg.name = current_name
             await self._writer(msg)
 
 
-class SelectedProgram(Property):
+class SelectedProgram(Property[str]):
     """A selected program property."""
 
     def __init__(
         self, module: Module, name: str, writer: Callable[[Message], Awaitable[None]]
-    ):
-        """Initialize Selected Program property with per-instance current value."""
-        super().__init__(module, name, writer)
-        self._selected_program_str: str | None = None
+    ) -> None:
+        super().__init__(module, name, writer, default=None)
 
     def get_categories(self) -> list[str]:
         """Return the categories for this property."""
@@ -120,53 +147,50 @@ class SelectedProgram(Property):
         """Return the device class for this property."""
         return
 
-    def get_options(self) -> list:
+    def get_options(self) -> list[str]:
         """Return the available program options for this property."""
         return list(PROGRAM_SELECTION.values())
 
     def get_selected_program(self) -> str | None:
         """Return the currently selected program."""
-        return self._selected_program_str
+        return self.cur
 
     async def set_selected_program(self, program_str: str) -> None:
         """Set the currently selected program."""
-        command_code = 0xB3
-        cls = commandRegistry.get_command(command_code, self._module.get_type())
         index = list(PROGRAM_SELECTION.values()).index(program_str)
         program = list(PROGRAM_SELECTION.keys())[index]
-        msg = cls(self.get_module_address(), program)
+        msg = self._module.create_message(
+            SelectProgramMessage, address=self.get_module_address()
+        )
+        msg.select_program = program
         await self._writer(msg)
-        await self.update({"selected_program_str": program_str})
+        await self.update_value(program_str)
 
 
-class LightValue(Property):
+class LightValue(Property[float]):
     """Light value property."""
 
     def __init__(
         self, module: Module, name: str, writer: Callable[[Message], Awaitable[None]]
-    ):
-        """Initialize light value property with per-instance current value."""
-        super().__init__(module, name, writer)
-        self._cur: float = 0.0
+    ) -> None:
+        super().__init__(module, name, writer, default=0.0)
 
     def get_state(self) -> float:
         """Return the current light sensor value."""
-        return round(self._cur, 2)
+        return round(self.cur or 0.0, 2)
 
 
-class BusErrorTx(Property):
+class BusErrorTx(Property[int]):
     """Bus Error Transmit property."""
 
     def __init__(
         self, module: Module, name: str, writer: Callable[[Message], Awaitable[None]]
-    ):
-        """Initialize Bus Error Transmit property with per-instance current value."""
-        super().__init__(module, name, writer)
-        self._cur: int = 0
+    ) -> None:
+        super().__init__(module, name, writer, default=0)
 
     def get_state(self) -> float:
         """Return the current Bus Error Transmit count."""
-        return float(self._cur)
+        return float(self.cur or 0)
 
 
 class BusErrorRx(BusErrorTx):

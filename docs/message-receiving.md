@@ -116,11 +116,11 @@ in-flight load traffic.
 3. Call the matched `_handle_*` / `_process_*` handler, then set the
    `_got_status` event.
 
-Handlers call `_update_channel` or `_update_property`, which delegate to
-`Channel.update` / `Property.update` (`velbusaio/channels.py`,
-`velbusaio/properties.py`). `update` only writes attributes that actually
-changed and then calls `status_update`, invoking every registered callback (for
-example, the Home Assistant integration).
+Handlers update channel or property attributes directly (or via helper methods)
+and call `maybe_status_update()` (`velbusaio/baseItem.py`). `BaseItem` tracks public
+annotated attributes and sets a dirty flag whenever a value changes, ensuring
+`status_update` only invokes registered callbacks (for example, the Home Assistant
+integration) when actual state changes occur.
 
 ## Outbound (for contrast)
 

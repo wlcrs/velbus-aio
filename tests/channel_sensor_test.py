@@ -17,7 +17,8 @@ class TestSensor:
     async def test_get_categories_disabled(self, mock_module, mock_writer):
         """Test sensor categories when disabled."""
         sensor = Sensor(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
-        await sensor.update({"enabled": False})
+        sensor.enabled = False
+        await sensor.maybe_status_update()
         assert sensor.get_categories() == []
 
 

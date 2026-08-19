@@ -4,7 +4,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from velbusaio.channels import Blind
+from velbusaio.channels import Blind, BlindState
+from velbusaio.messages.cover_down import CoverDownMessage
+from velbusaio.messages.cover_off import CoverOffMessage
+from velbusaio.messages.cover_position import CoverPosMessage
+from velbusaio.messages.cover_up import CoverUpMessage
 
 
 class TestBlind:
@@ -16,24 +20,27 @@ class TestBlind:
         assert blind.get_categories() == ["cover"]
 
     @pytest.mark.asyncio
-    async def test_get_position(self, mock_module, mock_writer):
-        """Test getting blind position."""
+    async def test_position(self, mock_module, mock_writer):
+        """Test blind position attribute."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"position": 50})
-        assert blind.get_position() == 50
+        blind.position = 50
+        await blind.maybe_status_update()
+        assert blind.position == 50
 
     @pytest.mark.asyncio
-    async def test_get_state(self, mock_module, mock_writer):
-        """Test getting blind state."""
+    async def test_state(self, mock_module, mock_writer):
+        """Test blind state attribute and update_status."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"state": 0x01})
-        assert blind.get_state() == 0x01
+        await blind.update_status(0x01, 50)
+        assert blind.state == BlindState.OPENING
+        assert blind.position == 50
 
     @pytest.mark.asyncio
     async def test_is_opening(self, mock_module, mock_writer):
         """Test checking if blind is opening."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"state": 0x01})
+        blind.state = BlindState.OPENING
+        await blind.maybe_status_update()
         assert blind.is_opening()
         assert not blind.is_closing()
         assert not blind.is_stopped()
@@ -42,7 +49,8 @@ class TestBlind:
     async def test_is_closing(self, mock_module, mock_writer):
         """Test checking if blind is closing."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"state": 0x02})
+        blind.state = BlindState.CLOSING
+        await blind.maybe_status_update()
         assert blind.is_closing()
         assert not blind.is_opening()
         assert not blind.is_stopped()
@@ -51,7 +59,8 @@ class TestBlind:
     async def test_is_stopped(self, mock_module, mock_writer):
         """Test checking if blind is stopped."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"state": 0x00})
+        blind.state = BlindState.STOPPED
+        await blind.maybe_status_update()
         assert blind.is_stopped()
         assert not blind.is_opening()
         assert not blind.is_closing()
@@ -60,10 +69,12 @@ class TestBlind:
     async def test_is_closed_with_position(self, mock_module, mock_writer):
         """Test checking if blind is closed when position is known."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"position": 100})
+        blind.position = 100
+        await blind.maybe_status_update()
         assert blind.is_closed()
 
-        await blind.update({"position": 50})
+        blind.position = 50
+        await blind.maybe_status_update()
         assert not blind.is_closed()
 
     def test_is_closed_without_position(self, mock_module, mock_writer):
@@ -75,10 +86,12 @@ class TestBlind:
     async def test_is_open_with_position(self, mock_module, mock_writer):
         """Test checking if blind is open when position is known."""
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-        await blind.update({"position": 0})
+        blind.position = 0
+        await blind.maybe_status_update()
         assert blind.is_open()
 
-        await blind.update({"position": 50})
+        blind.position = 50
+        await blind.maybe_status_update()
         assert not blind.is_open()
 
     def test_is_open_without_position(self, mock_module, mock_writer):
@@ -92,81 +105,62 @@ class TestBlind:
         blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
         assert not blind.support_position()
 
-        await blind.update({"position": 50})
+        blind.position = 50
+        await blind.maybe_status_update()
         assert blind.support_position()
 
     @pytest.mark.asyncio
     async def test_open(self, mock_module, mock_writer):
         """Test opening blind."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        await blind.open()
 
-            blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-            await blind.open()
-
-            mock_registry.get_command.assert_called_once_with(0x05, 0x01)
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, CoverUpMessage)
+        assert sent_msg.channel == 1
 
     @pytest.mark.asyncio
     async def test_close(self, mock_module, mock_writer):
         """Test closing blind."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        await blind.close()
 
-            blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-            await blind.close()
-
-            mock_registry.get_command.assert_called_once_with(0x06, 0x01)
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, CoverDownMessage)
+        assert sent_msg.channel == 1
 
     @pytest.mark.asyncio
     async def test_stop(self, mock_module, mock_writer):
         """Test stopping blind."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        await blind.stop()
 
-            blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-            await blind.stop()
-
-            mock_registry.get_command.assert_called_once_with(0x04, 0x01)
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, CoverOffMessage)
+        assert sent_msg.channel == 1
 
     @pytest.mark.asyncio
     async def test_set_position(self, mock_module, mock_writer):
         """Test setting blind position."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        await blind.set_position(50)
 
-            blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-            await blind.set_position(50)
-
-            mock_registry.get_command.assert_called_once_with(0x1C, 0x01)
-            assert mock_msg.position == 50
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, CoverPosMessage)
+        assert sent_msg.channel == 1
+        assert sent_msg.position == 50
 
     @pytest.mark.asyncio
     async def test_set_position_fully_closed(self, mock_module, mock_writer):
         """Test setting blind position to fully closed uses close command."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
+        await blind.set_position(100)
 
-            blind = Blind(mock_module, 1, "Blind", False, True, mock_writer, 0x01)
-            await blind.set_position(100)
-
-            # Should use close command (0x06) instead of position command
-            mock_registry.get_command.assert_called_once_with(0x06, 0x01)
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, CoverDownMessage)
+        assert sent_msg.channel == 1

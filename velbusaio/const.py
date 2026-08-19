@@ -3,10 +3,33 @@
 Author: Maikel Punie <maikel.punie@gmail.com>
 """
 
-from __future__ import annotations
-
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Final
+
+
+class BlindState(IntEnum):
+    """Blind movement state."""
+
+    STOPPED = 0x00
+    OPENING = 0x01
+    CLOSING = 0x02
+
+
+class ButtonLedState(StrEnum):
+    """Button LED state with associated command code."""
+
+    command_code: int
+
+    def __new__(cls, value: str, command_code: int) -> ButtonLedState:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.command_code = command_code
+        return obj
+
+    OFF = ("off", 0xF5)
+    ON = ("on", 0xF6)
+    SLOW = ("slow", 0xF7)
+    FAST = ("fast", 0xF8)
 
 
 class MessagePriority(IntEnum):

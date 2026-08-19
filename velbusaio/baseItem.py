@@ -14,9 +14,23 @@ from velbusaio.message import Message
 if TYPE_CHECKING:
     from velbusaio.module import Module
 
+_MISSING = object()
+
 
 class BaseItem(ABC):
     """Base class for properties or channels."""
+
+    _tracked_fields: frozenset[str] = frozenset()
+    _is_dirty: bool = False
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        tracked: set[str] = set()
+        for base in cls.__mro__:
+            for attr in getattr(base, "__annotations__", {}):
+                if not attr.startswith("_"):
+                    tracked.add(attr)
+        cls._tracked_fields = frozenset(tracked)
 
     def __init__(
         self,
@@ -30,6 +44,14 @@ class BaseItem(ABC):
         self._default_name = name
         self._writer = writer
         self._on_status_update: list[Callable[[], Awaitable[None]]] = []
+        self._is_dirty = False
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if hasattr(self, "_tracked_fields") and name in self._tracked_fields:
+            current_value = getattr(self, name, _MISSING)
+            if current_value != value:
+                super().__setattr__("_is_dirty", True)
+        super().__setattr__(name, value)
 
     @final
     def get_name(self) -> str:
@@ -98,7 +120,7 @@ class BaseItem(ABC):
         """Representation of this property."""
         items = []
         for k, v in self.__dict__.items():
-            if k not in ["_module", "_class", "_on_status_update", "_writer"]:
+            if k not in ["_module", "_class", "_on_status_update", "_writer", "_is_dirty"]:
                 items.append(f"{k} = {v!r}")
         return "{}[{}]".format(type(self), ", ".join(items))
 
@@ -136,21 +158,16 @@ class BaseItem(ABC):
         """
         data: dict = {}
         for key, value in self.__dict__.items():
-            if key in ("_module", "_on_status_update", "_writer"):
+            if key in ("_module", "_on_status_update", "_writer", "_is_dirty"):
                 continue
             data[key] = value
         return data
 
     @final
-    async def update(self, data: dict) -> None:
-        """Set the attributes of this property."""
-        changed = False
-        for key, new_val in data.items():
-            cur_val = getattr(self, f"_{key}", None)
-            if cur_val != new_val:
-                setattr(self, f"_{key}", new_val)
-                changed = True
-        if changed:
+    async def maybe_status_update(self) -> None:
+        """Call all registered status update methods if any tracked attributes have changed."""
+        if self._is_dirty:
+            self._is_dirty = False
             await self.status_update()
 
     @final
@@ -175,8 +192,8 @@ class BaseItem(ABC):
         data = {}
         data["type"] = self.__class__.__name__
         for key, value in self.__dict__.items():
-            if key not in ["_module", "_writer", "_name_parts", "_on_status_update"]:
-                data[key.replace("_", "", 1)] = value
+            if key not in ["_module", "_writer", "_name_parts", "_on_status_update", "_is_dirty"]:
+                data[key.lstrip("_")] = value
         return data
 
     def get_unit(self) -> str | None:

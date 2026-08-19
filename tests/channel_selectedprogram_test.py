@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from velbusaio.messages.module_status import PROGRAM_SELECTION
+from velbusaio.messages.select_program import SelectProgramMessage
 from velbusaio.properties import SelectedProgram
 
 
@@ -30,21 +31,18 @@ class TestSelectedProgram:
     async def test_get_selected_program(self, mock_module, mock_writer):
         """Test getting selected program."""
         prog = SelectedProgram(mock_module, "Program", mock_writer)
-        await prog.update({"selected_program_str": "Program 1"})
+        await prog.update_value("Program 1")
         assert prog.get_selected_program() == "Program 1"
+        assert prog.get_state() == "Program 1"
 
     @pytest.mark.asyncio
     async def test_set_selected_program(self, mock_module, mock_writer):
         """Test setting selected program."""
-        with patch("velbusaio.properties.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        prog = SelectedProgram(mock_module, "Program", mock_writer)
+        program_name = list(PROGRAM_SELECTION.values())[0]
+        await prog.set_selected_program(program_name)
 
-            prog = SelectedProgram(mock_module, "Program", mock_writer)
-            program_name = list(PROGRAM_SELECTION.values())[0]
-            await prog.set_selected_program(program_name)
-
-            mock_registry.get_command.assert_called_once_with(0xB3, 0x01)
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, SelectProgramMessage)
+        assert sent_msg.select_program == list(PROGRAM_SELECTION.keys())[0]

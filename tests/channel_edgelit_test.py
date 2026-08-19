@@ -3,6 +3,7 @@
 import pytest
 
 from velbusaio.channels import EdgeLit
+from velbusaio.messages.edge_set_color import SetEdgeColorMessage
 
 
 class TestEdgeLit:
@@ -16,6 +17,7 @@ class TestEdgeLit:
 
         mock_writer.assert_called_once()
         msg = mock_writer.call_args[0][0]
+        assert isinstance(msg, SetEdgeColorMessage)
         assert msg.apply_background_color is True
         assert msg.apply_to_left_edge is True
         assert msg.apply_to_top_edge is False
@@ -32,6 +34,7 @@ class TestEdgeLit:
 
         mock_writer.assert_called_once()
         msg = mock_writer.call_args[0][0]
+        assert isinstance(msg, SetEdgeColorMessage)
         assert msg.color_idx == 5
         assert msg.background_blinking is True
         assert msg.apply_to_left_edge is True

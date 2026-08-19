@@ -22,21 +22,24 @@ class TestSensorNumber:
     async def test_get_unit(self, mock_module, mock_writer):
         """Test getting sensor unit."""
         sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
-        await sensor.update({"unit": "°C"})
+        sensor.unit = "°C"
+        await sensor.maybe_status_update()
         assert sensor.get_unit() == "°C"
 
     @pytest.mark.asyncio
     async def test_get_state(self, mock_module, mock_writer):
         """Test getting sensor state."""
         sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
-        await sensor.update({"cur": 42.75})
+        sensor.cur = 42.75
+        await sensor.maybe_status_update()
         assert sensor.get_state() == 42.75
 
     @pytest.mark.asyncio
     async def test_get_sensor_type(self, mock_module, mock_writer):
         """Test getting sensor type."""
         sensor = SensorNumber(mock_module, 1, "Sensor", False, True, mock_writer, 0x01)
-        await sensor.update({"sensor_type": "humidity"})
+        sensor.sensor_type = "humidity"
+        await sensor.maybe_status_update()
         assert sensor.get_sensor_type() == "humidity"
 
 

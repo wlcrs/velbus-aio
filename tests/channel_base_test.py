@@ -119,7 +119,9 @@ class TestChannel:
         callback = AsyncMock()
         channel.on_status_update(callback)
 
-        await channel.update({"name": "Updated Name"})
+        channel.set_name("Updated Name")
+        channel._is_dirty = True
+        await channel.maybe_status_update()
         assert channel.get_name() == "Updated Name"
         callback.assert_called_once()
 
@@ -132,8 +134,37 @@ class TestChannel:
         callback = AsyncMock()
         channel.on_status_update(callback)
 
-        await channel.update({"name": "Test"})
+        await channel.maybe_status_update()
         callback.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_dirty_tracking_with_annotations(self, mock_module, mock_writer):
+        """Test that assigning to tracked annotated fields marks item dirty."""
+        from unittest.mock import AsyncMock
+
+        class CustomItem(Channel):
+            val: int = 0
+
+        item = CustomItem(mock_module, 1, "Test", False, False, mock_writer, 0x01)
+        callback = AsyncMock()
+        item.on_status_update(callback)
+
+        # No change
+        await item.maybe_status_update()
+        callback.assert_not_called()
+
+        # Change val
+        item.val = 42
+        assert item._is_dirty is True
+        await item.maybe_status_update()
+        callback.assert_called_once()
+        assert item._is_dirty is False
+
+        # Assign same value again -> should not become dirty
+        item.val = 42
+        assert item._is_dirty is False
+        await item.maybe_status_update()
+        callback.assert_called_once()
 
     def test_get_categories_default(self, mock_module, mock_writer):
         """Test default categories returns empty list."""

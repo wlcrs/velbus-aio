@@ -1,19 +1,16 @@
-"""This represents a velbus module."""
+"""This represents a velbus module (hardware device)."""
+
+# ruff: noqa: PLR0917
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-import importlib.resources
 import inspect
-import json
 import logging
-import os
-import pathlib
 import struct
-from typing import TYPE_CHECKING, Any
-
-import anyio
+import types
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin, get_type_hints
 
 if TYPE_CHECKING:
     from velbusaio.controller import Velbus as Controller
@@ -25,102 +22,57 @@ from velbusaio.actions import (
     build_action_tables,
     reserved_ranges,
 )
-from velbusaio.channels import (
-    Button,
-    ButtonCounter,
-    Channel,
-    Dimmer,
-    Temperature as TemperatureChannelType,
-)
+from velbusaio.channels import ButtonCounter, Channel, Dimmer
 from velbusaio.command_registry import commandRegistry
 from velbusaio.config import decode_name, encode_name
 from velbusaio.const import PRIORITY_LOW, SCAN_MODULEINFO_TIMEOUT_INITIAL
-from velbusaio.helpers import h2, handle_match, keys_exists
+from velbusaio.helpers import handle_match, keys_exists
 from velbusaio.memory import MemoryBackend, join_address
 from velbusaio.message import Message
-from velbusaio.messages.blind_status import (
-    BlindStatusMessage,
-    BlindStatusNg20Message,
-    BlindStatusNgMessage,
-)
-from velbusaio.messages.bus_error_counter_status import BusErrorCounterStatusMessage
-from velbusaio.messages.cancel_forced_off import CancelForcedOff
-from velbusaio.messages.cancel_forced_on import CancelForcedOn
-from velbusaio.messages.cancel_inhibit import CancelInhibit
-from velbusaio.messages.channel_name_part1 import (
-    ChannelNamePart1Message,
-    ChannelNamePart1Message2,
-    ChannelNamePart1Message3,
-)
-from velbusaio.messages.channel_name_part2 import (
-    ChannelNamePart2Message,
-    ChannelNamePart2Message2,
-    ChannelNamePart2Message3,
-)
-from velbusaio.messages.channel_name_part3 import (
-    ChannelNamePart3Message,
-    ChannelNamePart3Message2,
-    ChannelNamePart3Message3,
-)
+from velbusaio.message_router import route_module_message
+from velbusaio.messages.channel_name_part1 import ChannelNamePart1Message
+from velbusaio.messages.channel_name_part2 import ChannelNamePart2Message
+from velbusaio.messages.channel_name_part3 import ChannelNamePart3Message
 from velbusaio.messages.channel_name_request import (
     COMMAND_CODE as CHANNEL_NAME_REQUEST_COMMAND_CODE,
 )
-from velbusaio.messages.clear_led import ClearLedMessage
-from velbusaio.messages.counter_status import CounterStatusMessage
 from velbusaio.messages.counter_status_request import CounterStatusRequestMessage
-from velbusaio.messages.counter_value import CounterValueMessage
-from velbusaio.messages.dali_device_settings import (
-    DaliDeviceSettingMsg,
-    DeviceType as DaliDeviceType,
-    DeviceTypeMsg as DaliDeviceTypeMsg,
-    MemberOfGroupMsg,
-)
-from velbusaio.messages.dali_device_settings_request import (
-    COMMAND_CODE as DALI_DEVICE_SETTINGS_REQUEST_COMMAND_CODE,
-    DaliDeviceSettingsRequest,
-)
-from velbusaio.messages.dali_dim_value_status import DimValueStatus
-from velbusaio.messages.dimmer_channel_status import DimmerChannelStatusMessage
-from velbusaio.messages.dimmer_status import DimmerStatusMessage
-from velbusaio.messages.fast_blinking_led import FastBlinkingLedMessage
-from velbusaio.messages.forced_off import ForcedOff
-from velbusaio.messages.forced_on import ForcedOn
-from velbusaio.messages.inhibit import Inhibit
 from velbusaio.messages.memory_data import MemoryDataMessage
 from velbusaio.messages.memory_data_block import MemoryDataBlockMessage
-from velbusaio.messages.module_status import (
-    ModuleStatusGP4PirMessage,
-    ModuleStatusMessage,
-    ModuleStatusMessage2,
-    ModuleStatusPirMessage,
-)
 from velbusaio.messages.module_status_request import ModuleStatusRequestMessage
 from velbusaio.messages.module_type_request import ModuleTypeRequestMessage
-from velbusaio.messages.psu_load import PsuLoadMessage
-from velbusaio.messages.psu_values import PsuValuesMessage
-from velbusaio.messages.push_button_status import PushButtonStatusMessage
-from velbusaio.messages.raw import MeteoRawMessage, SensorRawMessage
 from velbusaio.messages.read_data_block_from_memory import (
     ReadDataBlockFromMemoryMessage,
 )
 from velbusaio.messages.read_data_from_memory import ReadDataFromMemoryMessage
-from velbusaio.messages.relay_status import (
-    RelayStatusMessage,
-    RelayStatusMessage2,
-    RelayStatusMessage3,
+from velbusaio.module_cache import build_cache_dict, read_cache, save_cache
+from velbusaio.module_spec_loader import (
+    check_memory_map_outdated,
+    format_build,
+    load_module_spec,
 )
-from velbusaio.messages.sensor_temperature import SensorTemperatureMessage
-from velbusaio.messages.set_led import SetLedMessage
-from velbusaio.messages.slider_status import SliderStatusMessage
-from velbusaio.messages.slow_blinking_led import SlowBlinkingLedMessage
-from velbusaio.messages.temp_sensor_settings_part1 import TempSensorSettingsPart1
-from velbusaio.messages.temp_sensor_settings_part2 import TempSensorSettingsPart2
-from velbusaio.messages.temp_sensor_settings_part3 import TempSensorSettingsPart3
-from velbusaio.messages.temp_sensor_settings_part4 import TempSensorSettingsPart4
-from velbusaio.messages.temp_sensor_status import TempSensorStatusMessage
-from velbusaio.messages.update_led_status import UpdateLedStatusMessage
-from velbusaio.properties import Property
-from velbusaio.temp_settings import TemperatureSettings, build_temperature_settings
+from velbusaio.domains.climate.channel import Temperature, ThermostatChannel
+from velbusaio.domains.cover.channel import Blind
+from velbusaio.domains.input.channel import Button, ButtonCounter, Sensor
+from velbusaio.domains.lighting.channel import Dimmer, Relay
+from velbusaio.message_router import (
+    dispatch_domain_handlers,
+    extract_message_types,
+    register_handler,
+    route_module_message,
+)
+from velbusaio.properties import (
+    BusErrorOff,
+    BusErrorRx,
+    BusErrorTx,
+    LightValue,
+    Property,
+    PSUCurrent,
+    PSULoad,
+    PSUPower,
+    PSUVoltage,
+    SelectedProgram,
+)
 
 
 class Module:
@@ -140,6 +92,8 @@ class Module:
     ) -> Module:
         """Module factory method."""
         if module_type in {0x45, 0x5A}:
+            from velbusaio.vmbdali import VmbDali  # noqa: PLC0415
+
             return VmbDali(
                 module_address,
                 module_type,
@@ -176,20 +130,17 @@ class Module:
         """Initialize Module object."""
         self._address = module_address
         self._type = int(module_type)
-        self._data = {}
+        self._data: dict[str, Any] = {}
 
         self._name: str | dict[Any, Any] | None = None
         self._name_buffer: dict[
             int, str
         ] = {}  # temporary buffer while assembling name from memory blocks
-        self._sub_address = {}
-        # the bus reports the serial as an int, a vlp file as a str => normalize
+        self._sub_address: dict[int, int] = {}
         self.serial = str(serial) if serial is not None else None
         self.memory_map_version = memorymap
         self.build_year = build_year
         self.build_week = build_week
-        # Set when the module's firmware predates the memory map its spec
-        # describes. Home Assistant surfaces this, and writes are refused.
         self._memory_map_outdated = False
         self._cache_dir = cache_dir
         self._is_loading = False
@@ -199,16 +150,19 @@ class Module:
         self._properties: dict[str, Property] = {}
         self._memory: MemoryBackend | None = None
         self._action_tables: dict[int, ActionTable] = {}
-        self._temp_settings: TemperatureSettings | None = None
+        self._message_handlers: dict[
+            type[Message], list[Callable[[Any], Awaitable[None]]]
+        ] = {}
         self.loaded = False
         self._use_cache = True
-        self._loaded_cache = {}
-        # serialize cache writes for this module to avoid concurrent
-        # coroutines interleaving writes to the same file
+        self._loaded_cache: dict[str, Any] = {}
         self._cache_lock = asyncio.Lock()
         self._on_module_found: Callable[[Module], Awaitable[None]] | None = (
             on_module_found
         )
+        self._controller: Controller | None = None
+        self._log = logging.getLogger("velbus-module")
+        self._writer: Callable[[Message], Awaitable[None]] | None = None
 
     async def wait_for_status_messages(self) -> None:
         """Wait for status messages to be received."""
@@ -228,47 +182,8 @@ class Module:
         self._controller = controller
         self._log = logging.getLogger("velbus-module")
 
-        # Build message handler dispatch table
-        self._message_handlers = self._build_message_handlers()
-
-        # load the protocol data
-        try:
-            # Load global.json first
-            global_data = {}
-            try:
-                with importlib.resources.path(
-                    __name__, "module_spec/global.json"
-                ) as fspath:
-                    async with await anyio.open_file(fspath) as global_file:
-                        global_data = json.loads(await global_file.read())
-                self._log.debug("Global module spec loaded")
-            except FileNotFoundError:
-                self._log.debug("No global module spec found")
-
-            # Load module-specific data
-            with importlib.resources.path(
-                __name__, f"module_spec/{h2(self._type)}.json"
-            ) as fspath:
-                async with await anyio.open_file(fspath) as protocol_file:
-                    self._data = json.loads(await protocol_file.read())
-
-            # Merge global data into module data (module-specific takes precedence)
-            for key, value in global_data.items():
-                if key not in self._data:
-                    self._data[key] = value
-                elif isinstance(value, dict) and isinstance(self._data[key], dict):
-                    # Deep merge for nested dictionaries
-                    self._data[key] = {**value, **self._data[key]}
-
-            self._log.debug(f"Module spec {h2(self._type)} loaded")
-        except FileNotFoundError:
-            self._log.warning(f"No module spec for {h2(self._type)}")
-            self._data = {}
-            for key, value in global_data.items():
-                if key not in self._data:
-                    self._data[key] = value
-                elif isinstance(value, dict) and isinstance(self._data[key], dict):
-                    self._data[key] = {**value, **self._data[key]}
+        # load the protocol data via spec loader helper
+        self._data = await load_module_spec(self._type, self._log)
 
         self._check_memory_map_build()
 
@@ -291,116 +206,55 @@ class Module:
             self._log,
             reserved=reserved_ranges(memory_spec),
         )
-        temp_chan: int | None = None
-        if "TemperatureChannel" in self._data:
-            temp_chan = self._translate_channel_name(self._data["TemperatureChannel"])
-        self._temp_settings = build_temperature_settings(
-            self._address,
-            writer,
-            self._data,
-            channel=temp_chan,
-            logger=self._log,
-        )
         for chan in self._channels.values():
             chan.set_writer(writer)
 
     def get_build(self) -> str | None:
         """Return the firmware build as "YYWW", or None when unknown."""
-        if self.build_year is None or self.build_week is None:
-            return None
-        return f"{self.build_year:02d}{self.build_week:02d}"
+        return format_build(self.build_year, self.build_week)
 
     def get_memory_map_build(self) -> str | None:
         """Return the build from which this spec's memory map applies."""
         return self._data.get("MemoryMapBuild")
 
     def is_memory_map_outdated(self) -> bool:
-        """Whether the module predates the memory map its spec describes.
-
-        When true the spec's addresses do not match this module's eeprom,
-        so its memory must not be written. Home Assistant surfaces this so
-        the mismatch is visible instead of silently corrupting data.
-        """
+        """Whether the module predates the memory map its spec describes."""
         return self._memory_map_outdated
 
     def _check_memory_map_build(self) -> None:
-        """Determine whether the module predates its spec's memory map.
-
-        Modules report their firmware build as year and week. The protocol
-        documents state the build from which each memory map applies, and
-        MemoryMapBuild records the one this spec was written against. A
-        module older than that runs an earlier layout, so every address in
-        the spec is suspect: reading a name or an action table returns
-        whatever else lives there, and writing destroys it.
-        """
-        self._memory_map_outdated = False
-        expected = self.get_memory_map_build()
-        reported = self.get_build()
-        if expected is None or reported is None:
-            return
-        # "YYWW", the same shape vlp_reader compares build numbers in.
-        if len(reported) != len(expected):
-            self._log.debug(f"Cannot compare build {reported} to {expected}")
-            return
-        if reported >= expected:
-            return
-
-        self._memory_map_outdated = True
-        self._log.warning(
-            f"Module {self._address} ({h2(self._type)}) reports build "
-            f"{reported}, but the module spec describes the memory map from "
-            f"build {expected} onwards. Memory addresses may be wrong; names "
-            f"and action tables read from this module can be incorrect, so "
-            f"writing to its memory is refused."
+        """Determine whether the module predates its spec's memory map."""
+        self._memory_map_outdated = check_memory_map_outdated(
+            self._address,
+            self._type,
+            self.build_year,
+            self.build_week,
+            self._data,
+            self._log,
         )
 
     def cleanupSubChannels(self) -> None:
         """Cleanup subchannels that are not defined."""
-        # TODO: 21/11/2022 DannyDeGaspari: Fix needed
-        # Care should be taken for this function, not all subaddresses have their channels on multiples of 8.
-        # The last subaddress contain typically the temperature channels, has more then 8 channels
-        # and doesn't start on a boundary of 8.
-        # E.g. The VMBGP4 has one subaddress, so since the second subaddress is not defined,
-        # this function will delete channels 17-24 while 17 and 18 belong to the temperature channels.
-        #
-        # The solution would be that this functions knows were the temperature channels are located
-        # and/or what the max number of subaddresses are for each module.
-        # if self._sub_address == {} and self.loaded:
-        #   raise Exception("No subaddresses defined")
         for sub in range(1, 4):
             if sub not in self._sub_address:
                 for i in range(((sub * 8) + 1), (((sub + 1) * 8) + 1)):
                     if i in self._channels and not isinstance(
-                        self._channels[i], TemperatureChannelType
+                        self._channels[i], channels_module.Temperature
                     ):
                         del self._channels[i]
 
     async def _cache(self) -> None:
         if not self._use_cache:
             return
-        cfile = pathlib.Path(f"{self._cache_dir}/{self._address}.json")
-        data = json.dumps(self.to_cache(), indent=4)
-        # Serialize writes per module and write atomically: dump to a
-        # temp file in the same directory, then rename it onto the final
-        # path. This prevents concurrent coroutines from interleaving
-        # truncating writes and leaving trailing garbage behind.
-        async with self._cache_lock:
-            tmpfile = cfile.with_name(f"{self._address}.json.{os.getpid()}.tmp")
-            async with await anyio.open_file(tmpfile, "w") as fl:
-                await fl.write(data)
-            await anyio.Path(tmpfile).rename(cfile)
+        await save_cache(
+            self._cache_dir,
+            self._address,
+            self.to_cache(),
+            self._cache_lock,
+            self._use_cache,
+        )
 
     async def write_cache(self) -> None:
-        """Persist this module's cache to disk.
-
-        The internal cache writes are triggered by name/channel-name
-        completion and by ``is_loaded()`` flipping to ``True``. A module that
-        is discovered on the bus but never finishes loading (for example a
-        DALI module that does not answer all of its info requests within the
-        scan window) hits none of those paths and would otherwise leave no
-        ``{address}.json`` behind. This method lets the scanner guarantee a
-        cache file exists for every module it found.
-        """
+        """Persist this module's cache to disk."""
         await self._cache()
 
     def __getstate__(self) -> dict:
@@ -426,22 +280,7 @@ class Module:
 
     def to_cache(self) -> dict:
         """Build cache dict."""
-        d: dict[str, Any] = {
-            # Fall back to the human-readable module type name when the module
-            # has no programmed name yet (e.g. it never finished loading). This
-            # keeps the cache entry meaningful instead of an empty string.
-            "name": self._name if isinstance(self._name, str) else self.get_type_name(),
-            "channels": {},
-            "sub_addresses": {},
-            "properties": {},
-        }
-        for chan_num, chan in self._channels.items():
-            d["channels"][chan_num] = chan.to_cache()
-        for sub_num, address in self._sub_address.items():
-            d["sub_addresses"][sub_num] = address
-        for prop_num, prop in self._properties.items():
-            d["properties"][prop_num] = prop.to_cache()
-        return d
+        return build_cache_dict(self)
 
     def get_address(self) -> int:
         """Get the module address."""
@@ -459,21 +298,12 @@ class Module:
 
     def is_channel_active(self, channel_num: int) -> bool:
         """Check if a channel is active based on sub-address configuration."""
-        # Channels 1-8 are always on the master address (active)
         if channel_num <= 8:
             return True
-
-        # Calculate sub-address index (1, 2, 3...)
-        # Block 1: 1-8 (index 0 / master)
-        # Block 2: 9-16 (index 1)
-        # Block 3: 17-24 (index 2)
-        # Block 4: 25-32 (index 3)
         sub_idx = (channel_num - 1) // 8
-
-        # Check if this sub-index exists in the active sub-addresses
         return sub_idx in self._sub_address
 
-    def add_subaddress(self, num, addr) -> None:
+    def add_subaddress(self, num: int, addr: int) -> None:
         """Add a subaddress to this module."""
         self._sub_address[num] = addr
 
@@ -486,6 +316,24 @@ class Module:
         if "Type" in self._data:
             return self._data["Type"]
         return "UNKNOWN"
+
+    def has_command(self, code: int) -> bool:
+        """Check if this module supports a given command code."""
+        return commandRegistry.has_command(code, self.get_type())
+
+    def create_message[M: Message](
+        self,
+        message_cls: type[M],
+        address: int | None = None,
+    ) -> M:
+        """Create the correct module-specific Message variant."""
+        target_addr = self._address if address is None else address
+        code = getattr(message_cls, "_command_code", None)
+        if code is not None:
+            cls = commandRegistry.get_command(code, self.get_type())
+            if cls is not None and issubclass(cls, message_cls):
+                return cls(target_addr)
+        return message_cls(target_addr)
 
     def get_serial(self) -> str | None:
         """Get the module serial number."""
@@ -513,19 +361,23 @@ class Module:
 
     def on_connect(self, meth: Callable[[], Awaitable[None]]) -> None:
         """Register a coroutine to be called on connect."""
-        self._controller.add_connect_callback(meth)
+        if self._controller:
+            self._controller.add_connect_callback(meth)
 
     def remove_on_connect(self, meth: Callable[[], Awaitable[None]]) -> None:
         """Remove a previously registered on connect coroutine."""
-        self._controller.remove_connect_callback(meth)
+        if self._controller:
+            self._controller.remove_connect_callback(meth)
 
     def on_disconnect(self, meth: Callable[[], Awaitable[None]]) -> None:
         """Register a coroutine to be called on disconnect."""
-        self._controller.add_disconnect_callback(meth)
+        if self._controller:
+            self._controller.add_disconnect_callback(meth)
 
     def remove_on_disconnect(self, meth: Callable[[], Awaitable[None]]) -> None:
         """Remove a previously registered on disconnect coroutine."""
-        self._controller.remove_disconnect_callback(meth)
+        if self._controller:
+            self._controller.remove_disconnect_callback(meth)
 
     async def _trigger_load_finished_callbacks(self) -> None:
         """Trigger all registered on load finished callbacks."""
@@ -538,537 +390,67 @@ class Module:
     @property
     def is_connected(self) -> bool:
         """Return if the module is connected."""
-        return self._controller.connected
+        if self._controller:
+            return self._controller.connected
+        return False
 
-    def _build_message_handlers(self) -> dict:
-        """Build dispatch table for message handlers."""
-        return {
-            # Channel name messages
-            ChannelNamePart1Message: self._handle_channel_name_part1,
-            ChannelNamePart1Message2: self._handle_channel_name_part1,
-            ChannelNamePart1Message3: self._handle_channel_name_part1,
-            ChannelNamePart2Message: self._handle_channel_name_part2,
-            ChannelNamePart2Message2: self._handle_channel_name_part2,
-            ChannelNamePart2Message3: self._handle_channel_name_part2,
-            ChannelNamePart3Message: self._handle_channel_name_part3,
-            ChannelNamePart3Message2: self._handle_channel_name_part3,
-            ChannelNamePart3Message3: self._handle_channel_name_part3,
-            # Memory messages
-            MemoryDataMessage: self._process_memory_data_message,
-            MemoryDataBlockMessage: self._process_memory_data_block_message,
-            # Status messages
-            BusErrorCounterStatusMessage: self._handle_bus_error_counter,
-            RelayStatusMessage: self._handle_relay_status,
-            RelayStatusMessage2: self._handle_relay_status,
-            RelayStatusMessage3: self._handle_relay_status3,
-            ForcedOn: self._handle_forced_on,
-            ForcedOff: self._handle_forced_off,
-            Inhibit: self._handle_inhibit,
-            CancelForcedOn: self._handle_cancel_forced,
-            CancelForcedOff: self._handle_cancel_forced,
-            CancelInhibit: self._handle_cancel_forced,
-            # Temperature messages
-            SensorTemperatureMessage: self._handle_sensor_temperature,
-            TempSensorStatusMessage: self._handle_temp_sensor_status,
-            TempSensorSettingsPart1: self._handle_temp_sensor_settings,
-            TempSensorSettingsPart2: self._handle_temp_sensor_settings,
-            TempSensorSettingsPart3: self._handle_temp_sensor_settings,
-            TempSensorSettingsPart4: self._handle_temp_sensor_settings,
-            # Button and module status messages
-            PushButtonStatusMessage: self._handle_push_button_status,
-            ModuleStatusMessage: self._handle_module_status,
-            ModuleStatusMessage2: self._handle_module_status2,
-            CounterStatusMessage: self._handle_counter_status,
-            ModuleStatusPirMessage: self._handle_module_status_pir,
-            ModuleStatusGP4PirMessage: self._handle_module_status_gp4_pir,
-            # LED messages
-            UpdateLedStatusMessage: self._handle_led_status,
-            SetLedMessage: self._handle_set_led,
-            ClearLedMessage: self._handle_clear_led,
-            SlowBlinkingLedMessage: self._handle_slow_blinking_led,
-            FastBlinkingLedMessage: self._handle_fast_blinking_led,
-            # Dimmer and blind messages
-            DimmerChannelStatusMessage: self._handle_dimmer_status,
-            DimmerStatusMessage: self._handle_dimmer_status,
-            SliderStatusMessage: self._handle_slider_status,
-            BlindStatusNgMessage: self._handle_blind_status_ng,
-            BlindStatusNg20Message: self._handle_blind_status_ng20,
-            BlindStatusMessage: self._handle_blind_status,
-            # Sensor messages
-            MeteoRawMessage: self._handle_meteo_raw,
-            SensorRawMessage: self._handle_sensor_raw,
-            CounterValueMessage: self._handle_counter_value,
-            DimValueStatus: self._handle_dim_value_status,
-            # PSU messages
-            PsuLoadMessage: self._handle_psu_load,
-            PsuValuesMessage: self._handle_psu_values,
-        }
-
-    async def _handle_channel_name_part1(
-        self, message: ChannelNamePart1Message
-    ) -> None:
-        """Handle channel name part 1 messages."""
-        await self._process_channel_name_message(1, message)
-        await self._cache()
-
-    async def _handle_channel_name_part2(
-        self, message: ChannelNamePart2Message
-    ) -> None:
-        """Handle channel name part 2 messages."""
-        await self._process_channel_name_message(2, message)
-        await self._cache()
-
-    async def _handle_channel_name_part3(
-        self, message: ChannelNamePart3Message
-    ) -> None:
-        """Handle channel name part 3 messages."""
-        await self._process_channel_name_message(3, message)
-        await self._cache()
-
-    async def _handle_bus_error_counter(
-        self, message: BusErrorCounterStatusMessage
-    ) -> None:
-        """Handle bus error counter status messages."""
-        await self._update_property(
-            "bus_error_tx", {"cur": message.transmit_error_counter}
-        )
-        await self._update_property(
-            "bus_error_rx", {"cur": message.receive_error_counter}
-        )
-        await self._update_property("bus_error_off", {"cur": message.bus_off_counter})
-
-    async def _handle_relay_status(
-        self, message: RelayStatusMessage | RelayStatusMessage2
-    ) -> None:
-        """Handle relay status messages."""
-        await self._update_channel(
-            message.channel,
-            {
-                "on": message.is_on(),
-                "inhibit": message.is_inhibited(),
-                "forced_on": message.is_forced_on(),
-                "disabled": message.is_disabled(),
-            },
-        )
-
-    async def _handle_relay_status3(self, message: RelayStatusMessage3) -> None:
-        """Handle relay status 3 messages."""
-        for channel in range(1, 9):
-            await self._update_channel(
-                channel,
-                {
-                    "on": message.is_on(channel),
-                    "inhibit": message.is_inhibited(channel),
-                    "forced_on": message.is_forced_on(channel),
-                    "forced_off": message.is_forced_off(channel),
-                    "disabled": message.is_program_disabled(channel),
-                },
-            )
-
-    async def _handle_forced_on(self, message: ForcedOn) -> None:
-        """Handle forced on messages."""
-        await self._update_channel(
-            message.channel,
-            {"forced_on": True, "forced_off": False, "inhibit": False},
-        )
-
-    async def _handle_forced_off(self, message: ForcedOff) -> None:
-        """Handle forced off messages."""
-        await self._update_channel(
-            message.channel,
-            {"forced_on": False, "forced_off": True, "inhibit": False},
-        )
-
-    async def _handle_inhibit(self, message: Inhibit) -> None:
-        """Handle inhibit messages."""
-        await self._update_channel(
-            message.channel,
-            {"forced_on": False, "forced_off": False, "inhibit": True},
-        )
-
-    async def _handle_cancel_forced(
-        self, message: CancelForcedOn | CancelForcedOff | CancelInhibit
-    ) -> None:
-        """Handle cancel forced/inhibit messages."""
-        await self._update_channel(
-            message.channel,
-            {"forced_on": False, "forced_off": False, "inhibit": False},
-        )
-
-    async def _handle_sensor_temperature(
-        self, message: SensorTemperatureMessage
-    ) -> None:
-        """Handle sensor temperature messages."""
-        chan = self._translate_channel_name(self._data["TemperatureChannel"])
-        temp_channel = self._channels.get(chan)
-        if isinstance(temp_channel, TemperatureChannelType):
-            await temp_channel.maybe_update_temperature(message.getCurTemp(), 1 / 64)
-        await self._update_channel(
-            chan,
-            {
-                "min": message.getMinTemp(),
-                "max": message.getMaxTemp(),
-            },
-        )
-
-    async def _handle_temp_sensor_settings(
+    def register_message_handler(
         self,
-        message: (
-            TempSensorSettingsPart1
-            | TempSensorSettingsPart2
-            | TempSensorSettingsPart3
-            | TempSensorSettingsPart4
-        ),
+        handler: Callable[[Any], Awaitable[None]],
+        message_type: type[Message] | tuple[type[Message], ...] | None = None,
     ) -> None:
-        """Handle temperature sensor settings Part1-4 replies."""
-        if self._temp_settings is not None:
-            self._temp_settings.feed_message(message)
+        """Register a message handler on this module."""
+        if message_type is None:
+            types_tuple = extract_message_types(handler)
+        elif isinstance(message_type, tuple):
+            types_tuple = message_type
+        else:
+            types_tuple = (message_type,)
+        for msg_cls in types_tuple:
+            self._message_handlers.setdefault(msg_cls, []).append(handler)
 
-    async def _handle_temp_sensor_status(
-        self, message: TempSensorStatusMessage
-    ) -> None:
-        """Handle temperature sensor status messages."""
-        chan = self._translate_channel_name(self._data["TemperatureChannel"])
-        if chan in self._channels:
-            status_map = {0: "run", 1: "manual", 2: "sleep", 3: "disable"}
-            mode_map = {0: "safe", 1: "night", 2: "day", 4: "comfort"}
-            await self._update_channel(
-                chan,
-                {
-                    "target": message.target_temp,
-                    "cmode": mode_map.get(message.mode, "safe"),
-                    "cstatus": status_map.get(message.status_mode, "run"),
-                    "sleep_timer": message.sleep_timer,
-                    "cool_mode": message.cool_mode,
-                },
-            )
-
-            temp_channel = self._channels[chan]
-            if isinstance(temp_channel, TemperatureChannelType):
-                await temp_channel.maybe_update_temperature(message.current_temp, 1 / 2)
-
-        # Update thermostat channels.
-        # The spec channel names differ between module generations: the older
-        # modules (VMBEL1/2/4, VMBGP*, VMBGPO, ...) use the short names
-        # ("Boost", "Alarm 1"), while the "-20" variants use the long names
-        # ("Boost heater/cooler", "Temperature alarm 1"). Map both so the
-        # boost/alarm binary sensors stay in sync on every module.
-        channel_name_to_msg_prop_map = {
-            "Heater": "heater",
-            "Boost": "boost",
-            "Boost heater/cooler": "boost",
-            "Pump": "pump",
-            "Cooler": "cooler",
-            "Alarm 1": "alarm1",
-            "Alarm 2": "alarm2",
-            "Alarm 3": "alarm3",
-            "Alarm 4": "alarm4",
-            "Temperature alarm 1": "alarm1",
-            "Temperature alarm 2": "alarm2",
-            "Temperature alarm 3": "alarm3",
-            "Temperature alarm 4": "alarm4",
-        }
-        for channel_str in self._data["Channels"]:
-            if (
-                keys_exists(self._data, "Channels", channel_str, "Type")
-                and self._data["Channels"][channel_str]["Type"] == "ThermostatChannel"
-            ):
-                channel = self._translate_channel_name(channel_str)
-                channel_name = self._data["Channels"][channel_str]["Name"]
-                if (
-                    channel in self._channels
-                    and channel_name in channel_name_to_msg_prop_map
-                ):
-                    await self._update_channel(
-                        channel,
-                        {
-                            "closed": getattr(
-                                message, channel_name_to_msg_prop_map[channel_name]
-                            )
-                        },
-                    )
-
-    async def _handle_push_button_status(
-        self, message: PushButtonStatusMessage, channel_offset: int
-    ) -> None:
-        """Handle push button status messages."""
-        _update_buttons = False
-        for channel_types in self._data["Channels"]:
-            if keys_exists(
-                self._data, "Channels", channel_types, "Type"
-            ) and self._data["Channels"][channel_types]["Type"] in (
-                "Button",
-                "Sensor",
-                "ButtonCounter",
-                "Relay",
-            ):
-                _update_buttons = True
-                break
-        if _update_buttons:
-            for channel_id in range(1, 9):
-                channel = self._translate_channel_name(channel_id + channel_offset)
-                if channel_id in message.closed:
-                    await self._update_channel(channel, {"closed": True, "on": True})
-                if channel_id in message.closed_long:
-                    await self._update_channel(channel, {"long": True})
-                if channel_id in message.opened:
-                    await self._update_channel(
-                        channel, {"closed": False, "long": False, "on": False}
-                    )
-
-    async def _handle_module_status(
-        self, message: ModuleStatusMessage, channel_offset: int
-    ) -> None:
-        """Handle module status messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.closed:
-                await self._update_channel(channel, {"closed": True})
-            elif channel in self._channels and isinstance(
-                self._channels[channel], (Button, ButtonCounter)
-            ):
-                await self._update_channel(channel, {"closed": False})
-
-    async def _handle_module_status2(
-        self, message: ModuleStatusMessage2, channel_offset: int
-    ) -> None:
-        """Handle module status 2 messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.closed:
-                await self._update_channel(channel, {"closed": True})
-            elif channel in self._channels and isinstance(
-                self._channels[channel], (Button, ButtonCounter)
-            ):
-                await self._update_channel(channel, {"closed": False})
-            if channel_id in message.enabled:
-                await self._update_channel(channel, {"enabled": True})
-            elif channel in self._channels and isinstance(
-                self._channels[channel], (Button, ButtonCounter)
-            ):
-                await self._update_channel(channel, {"enabled": False})
-        program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
-        await self._update_property(
-            "selected_program",
-            {
-                "selected_program_str": program_selection.get(
-                    message.selected_program, "none"
-                )
-            },
-        )
-
-    async def _handle_counter_status(self, message: CounterStatusMessage) -> None:
-        """Handle counter status messages."""
-        if isinstance(self._channels.get(message.channel), ButtonCounter):
-            channel = self._translate_channel_name(message.channel)
-            await self._update_channel(
-                channel,
-                {
-                    "pulses": message.pulses,
-                    "counter": message.counter,
-                    "delay": message.delay,
-                },
-            )
-
-    async def _handle_module_status_pir(self, message: ModuleStatusPirMessage) -> None:
-        """Handle PIR module status messages."""
-        program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
-        await self._update_property("light_value", {"cur": message.light_value})
-        await self._update_channel(1, {"closed": message.dark})
-        await self._update_channel(2, {"closed": message.light})
-        await self._update_channel(3, {"closed": message.motion1})
-        await self._update_channel(4, {"closed": message.light_motion1})
-        await self._update_channel(5, {"closed": message.motion2})
-        await self._update_channel(6, {"closed": message.light_motion2})
-        if 7 in self._channels:
-            await self._update_channel(7, {"closed": message.low_temp_alarm})
-        if 8 in self._channels:
-            await self._update_channel(8, {"closed": message.high_temp_alarm})
-        await self._update_property(
-            "selected_program",
-            {
-                "selected_program_str": program_selection.get(
-                    message.selected_program, "none"
-                )
-            },
-        )
-
-    async def _handle_module_status_gp4_pir(
-        self, message: ModuleStatusGP4PirMessage, channel_offset: int
-    ) -> None:
-        """Handle GP4 PIR module status messages."""
-        program_selection = {0: "none", 1: "summer", 2: "winter", 3: "holiday"}
-        await self._update_property("light_value", {"cur": message.light_value})
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            await self._update_channel(
-                channel, {"closed": channel_id in message.closed}
-            )
-            if channel in self._channels and isinstance(
-                self._channels[channel], Button
-            ):
-                await self._update_channel(
-                    channel, {"enabled": channel_id in message.enabled}
-                )
-        await self._update_property(
-            "selected_program",
-            {
-                "selected_program_str": program_selection.get(
-                    message.selected_program, "none"
-                )
-            },
-        )
-
-    async def _handle_led_status(
-        self, message: UpdateLedStatusMessage, channel_offset: int
-    ) -> None:
-        """Handle LED status update messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.led_slow_blinking:
-                await self._update_channel(channel, {"led_state": "slow"})
-            elif channel_id in message.led_fast_blinking:
-                await self._update_channel(channel, {"led_state": "fast"})
-            elif channel_id in message.led_on:
-                await self._update_channel(channel, {"led_state": "on"})
-            else:
-                await self._update_channel(channel, {"led_state": "off"})
-
-    async def _handle_set_led(
-        self, message: SetLedMessage, channel_offset: int
-    ) -> None:
-        """Handle set LED messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.leds:
-                await self._update_channel(channel, {"led_state": "on"})
-
-    async def _handle_clear_led(
-        self, message: ClearLedMessage, channel_offset: int
-    ) -> None:
-        """Handle clear LED messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.leds:
-                await self._update_channel(channel, {"led_state": "off"})
-
-    async def _handle_slow_blinking_led(
-        self, message: SlowBlinkingLedMessage, channel_offset: int
-    ) -> None:
-        """Handle slow blinking LED messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.leds:
-                await self._update_channel(channel, {"led_state": "slow"})
-
-    async def _handle_fast_blinking_led(
-        self, message: FastBlinkingLedMessage, channel_offset: int
-    ) -> None:
-        """Handle fast blinking LED messages."""
-        for channel_id in range(1, 9):
-            channel = self._translate_channel_name(channel_id + channel_offset)
-            if channel_id in message.leds:
-                await self._update_channel(channel, {"led_state": "fast"})
-
-    async def _handle_dimmer_status(
-        self, message: DimmerChannelStatusMessage | DimmerStatusMessage
-    ) -> None:
-        """Handle dimmer status messages."""
-        channel = self._translate_channel_name(message.channel)
-        await self._update_channel(channel, {"state": message.cur_dimmer_state()})
-
-    async def _handle_slider_status(self, message: SliderStatusMessage) -> None:
-        """Handle slider status messages."""
-        channel = self._translate_channel_name(message.channel)
-        await self._update_channel(channel, {"state": message.cur_slider_state()})
-
-    async def _handle_blind_status_ng(self, message: BlindStatusNgMessage) -> None:
-        """Handle blind status NG messages."""
-        channel = self._translate_channel_name(message.channel)
-        await self._update_channel(
-            channel, {"state": message.status, "position": message.position}
-        )
-
-    async def _handle_blind_status_ng20(self, message: BlindStatusNg20Message) -> None:
-        """Handle blind status NG20 messages."""
-        # The messages contain the status for both channels, so we need to update both channels
-        for i in range(2):
-            channel = self._translate_channel_name(message.channel[i])
-            await self._update_channel(
-                channel, {"state": message.status[i], "position": message.position[i]}
-            )
-
-    async def _handle_blind_status(self, message: BlindStatusMessage) -> None:
-        """Handle blind status messages."""
-        channel = self._translate_channel_name(message.channel)
-        await self._update_channel(channel, {"state": message.status})
-
-    async def _handle_meteo_raw(self, message: MeteoRawMessage) -> None:
-        """Handle meteo raw messages."""
-        await self._update_channel(11, {"cur": message.rain})
-        await self._update_channel(12, {"cur": message.light})
-        await self._update_channel(13, {"cur": message.wind})
-
-    async def _handle_sensor_raw(self, message: SensorRawMessage) -> None:
-        """Handle sensor raw messages."""
-        await self._update_channel(
-            message.sensor, {"cur": message.value, "unit": message.unit}
-        )
-
-    async def _handle_counter_value(self, message: CounterValueMessage) -> None:
-        """Handle counter value messages."""
-        await self._update_channel(
-            message.channel, {"power": message.power, "energy": message.energy}
-        )
-
-    async def _handle_dim_value_status(self, message: DimValueStatus) -> None:
-        """Handle dim value status messages."""
-        for offset, dim_value in enumerate(message.dim_values):
-            channel = message.channel + offset
-            await self._update_channel(channel, {"state": dim_value})
-
-    async def _handle_psu_load(self, message: PsuLoadMessage) -> None:
-        """Handle PSU load messages."""
-        await self._update_property("psu_load_out", {"cur": message.out})
-        await self._update_property("psu_load_1", {"cur": message.load_1})
-        await self._update_property("psu_load_2", {"cur": message.load_2})
-
-    async def _handle_psu_values(self, message: PsuValuesMessage) -> None:
-        """Handle PSU values messages."""
-        suffix = "out" if message.channel == 3 else f"{message.channel}"
-        await self._update_property(f"psu_power_{suffix}", {"cur": message.watt})
-        await self._update_property(f"psu_voltage_{suffix}", {"cur": message.volt})
-        await self._update_property(f"psu_current_{suffix}", {"cur": message.amp})
+    async def dispatch_message(self, message: Message) -> bool:
+        """Dispatch an incoming message to registered domain and module handlers."""
+        handled_domain = await dispatch_domain_handlers(self, message)
+        handlers = self._message_handlers.get(type(message), [])
+        for handler in handlers:
+            await handler(message)
+        return handled_domain or bool(handlers)
 
     async def on_message(self, message: Message) -> None:
         """Process received message."""
         self._log.debug(f"RX: {message}")
         _channel_offset = self.calc_channel_offset(message.address)
 
-        # Use dispatch table for message handling
-        handler = self._message_handlers.get(type(message))
-        if handler:
-            # Check if handler needs channel_offset parameter
-            sig = inspect.signature(handler)
-            if "channel_offset" in sig.parameters:
-                await handler(message, _channel_offset)
-            else:
-                await handler(message)
+        # Route message directly to channels and properties via message_router
+        await route_module_message(self, message, _channel_offset, self._log)
 
         # Notify status
         self._got_status.set()
 
-    async def _update_channel(self, channel: int, updates: dict):
+    async def _handle_bus_error_counter(
+        self, message: Message, channel_offset: int = 0
+    ) -> None:
+        """Backward-compatible handler for bus error counter status."""
+        await self.on_message(message)
+
+    async def _update_channel(self, channel: int, updates: dict) -> None:
         try:
-            await self._channels[channel].update(updates)
+            item = self._channels[channel]
+            for key, val in updates.items():
+                setattr(item, key, val)
+            await item.maybe_status_update()
         except KeyError:
             self._log.error(
                 f"channel {channel} does not exist for module @ address {self}"
             )
 
-    async def _update_property(self, property_name: str, updates: dict):
+    async def _update_property(self, property_name: str, updates: dict) -> None:
         try:
-            await self._properties[property_name].update(updates)
+            item = self._properties[property_name]
+            for key, val in updates.items():
+                setattr(item, key, val)
+            await item.maybe_status_update()
         except KeyError:
             self._log.error(
                 f"property {property_name} does not exist for module @ address {self}"
@@ -1108,10 +490,6 @@ class Module:
             "enabled_value": int(spec.get("enabled_value", 0x01)),
         }
 
-    def get_temp_settings(self) -> TemperatureSettings | None:
-        """Return the temperature settings helper, if this module supports it."""
-        return self._temp_settings
-
     async def load_action_table(
         self, channel: int, *, force: bool = False
     ) -> list[ActionSlot]:
@@ -1146,7 +524,7 @@ class Module:
             self._channels[channel].set_name(decode_name(encode_name(name, length)))
             await self._cache()
 
-    async def load_from_vlp(self, vlp_data) -> None:
+    async def load_from_vlp(self, vlp_data: Any) -> None:
         """Initialize the module from VLP data."""
         self._is_loading = True
         self._use_cache = False
@@ -1163,39 +541,25 @@ class Module:
 
     async def load(self, from_cache: bool = False) -> None:
         """Initialize the module."""
-        # start the loading
         self._is_loading = True
-        # see if we have a cache
         cache = await self._get_cache()
         self._loaded_cache = cache
-        # load default channels
         await self._load_default_channels()
         await self._load_properties()
 
-        # load the data from memory ( the stuff that we need)
         if "name" in cache and isinstance(cache["name"], str) and cache["name"] != "":
             self._name = cache["name"]
         else:
             await self.__load_memory()
 
-        # load the sub addresses from cache if it's available
         if (self._use_cache or from_cache) and "sub_addresses" in cache:
             for num, addr in cache["sub_addresses"].items():
                 self._sub_address[int(num)] = int(addr)
-        else:
-            # Submit ModuleType request to trigger discovery of sub addresses.
-            # Do not cache immediately here: sub addresses are populated asynchronously
-            # when the response is handled; caching now could store an empty mapping.
+        elif self._writer:
             await self._writer(ModuleTypeRequestMessage(self._address))
 
-        # load the module status
-        # await self._request_module_status()
-        # load the channel names
         if "channels" in cache:
             for num, chan in cache["channels"].items():
-                # Cache keys are the canonical internal channel numbers, so they
-                # must not be run through the name-map translation (which only
-                # applies to channel identifiers reported in incoming messages).
                 chan_num = int(num)
                 if chan_num not in self._channels:
                     continue
@@ -1211,39 +575,20 @@ class Module:
                 self._channels[chan_num].set_loaded(True)
         else:
             await self._request_channel_name()
-        # load the module specific stuff
         self._load()
-        # stop the loading
         self._is_loading = False
         await self._request_module_status()
         await self._trigger_load_finished_callbacks()
 
-    async def _get_cache(self):
-        cfile = pathlib.Path(f"{self._cache_dir}/{self._address}.json")
-        try:
-            async with await anyio.open_file(cfile, "r") as fl:
-                cache = json.loads(await fl.read())
-        except OSError:
-            return {}
-        except (json.JSONDecodeError, KeyError, ValueError):
-            cache = None
-        if not isinstance(cache, dict):
-            self._log.warning(
-                "Cache file for module %s is corrupt, removing it",
-                self._address,
-            )
-            await anyio.Path(cfile).unlink(missing_ok=True)
-            return {}
-        return cache
+    async def _get_cache(self) -> dict[str, Any]:
+        """Read cache dictionary from disk."""
+        return await read_cache(self._cache_dir, self._address, self._log)
 
     def _load(self) -> None:
         """Method for per module type loading."""
 
     def number_of_channels(self) -> int:
-        """Retrieve the number of available channels in this module.
-
-        :return: int
-        """
+        """Retrieve the number of available channels in this module."""
         if not len(self._channels):
             return 0
         return max(self._channels.keys())
@@ -1256,21 +601,18 @@ class Module:
         await memo_prop.set(txt)
 
     async def _process_memory_data_block_message(
-        self, message: MemoryDataBlockMessage
+        self, message: MemoryDataBlockMessage, channel_offset: int = 0
     ) -> None:
         if self._memory is not None:
             self._memory.feed_message(message)
         addr = f"{message.high_address:02X}{message.low_address:02X}"
         if "Memory" not in self._data:
             return
-        # TODO this can also be SensorName, implement that also
         if "ModuleName" not in self._data["Memory"]:
             return
         addr_data = self._data["Memory"]["ModuleName"]
         if isinstance(self._name, str):
-            # Name already fully assembled, nothing to do
             return
-        # Parse address ranges: "00DD-00E9;01DD-01E9;02DD-02E9;03DD-03E9;04DD-04E8"
         ranges = []
         byte_offset = 0
         for block in addr_data.split(";"):
@@ -1279,30 +621,26 @@ class Module:
             end_addr = int("0x" + end_str, 0)
             ranges.append((start_addr, end_addr, byte_offset))
             byte_offset += end_addr - start_addr + 1
-        # Check if incoming address falls within any range
         incoming_addr = int("0x" + addr, 0)
         for start_addr, end_addr, range_byte_offset in ranges:
             if start_addr <= incoming_addr <= end_addr:
-                # Calculate the byte position within the overall module name
                 position_in_range = incoming_addr - start_addr
                 base_position = range_byte_offset + position_in_range
-                # Store each byte in the temporary buffer, not in _name itself.
-                # _name is only set to a string once all bytes have been received.
                 for i, byte_val in enumerate(message.data):
                     char_position = base_position + i
                     self._name_buffer[char_position] = chr(byte_val)
-                # Check if all expected bytes have been received
                 total_bytes = ranges[-1][2] + (ranges[-1][1] - ranges[-1][0] + 1)
                 if len(self._name_buffer) >= total_bytes:
-                    # All bytes received: assemble the name string, skip 0xFF (unprogrammed bytes)
                     self._name = "".join(
                         str(x) for x in self._name_buffer.values() if x != chr(0xFF)
                     )
-                    self._name_buffer = {}  # release buffer
+                    self._name_buffer = {}
                     await self._cache()
                 break
 
-    async def _process_memory_data_message(self, message: MemoryDataMessage) -> None:
+    async def _process_memory_data_message(
+        self, message: MemoryDataMessage, channel_offset: int = 0
+    ) -> None:
         if self._memory is not None:
             self._memory.feed_message(message)
         addr_int = join_address(message.high_address, message.low_address)
@@ -1317,13 +655,15 @@ class Module:
         if "Match" in mdata:
             for chan, chan_data in handle_match(mdata["Match"], message.data).items():
                 data = chan_data.copy()
-                # Special handling for 16-bit PulsePerUnits
                 if "PulsePerUnits" in data:
-                    current_pulses = getattr(self._channels[chan], "_pulses", 0) or 0
-                    # If this is the high byte (even address in VMB8IN)
-                    if addr_int % 4 == 0:  # 02E8, 02EC...
+                    current_pulses = (
+                        getattr(self._channels[chan], "pulses", None)
+                        or getattr(self._channels[chan], "_pulses", 0)
+                        or 0
+                    )
+                    if addr_int % 4 == 0:
                         new_pulses = (message.data << 8) + (current_pulses & 0xFF)
-                    else:  # 02E9, 02ED...
+                    else:
                         new_pulses = (current_pulses & 0xFF00) + message.data
                     data["pulses"] = new_pulses
                 await self._update_channel(chan, data)
@@ -1335,13 +675,19 @@ class Module:
         | ChannelNamePart2Message
         | ChannelNamePart3Message,
     ) -> None:
-        channel = self._translate_channel_name(message.channel)
-        if channel not in self._channels:
+        channel_obj = self.get_channel(message.channel)
+        if channel_obj is None:
             return
-        if self._channels[channel].set_name_part(part, message.name) and self.loaded:
-            await self._channels[channel].status_update()
+        if channel_obj.set_name_part(part, message.name) and self.loaded:
+            await channel_obj.status_update()
 
-    def _translate_channel_name(self, channel: str | int) -> int:
+    def get_channel(self, channel: str | int) -> Channel | None:
+        """Return channel instance by packet channel number, applying hardware index remapping."""
+        channel_id = self.map_channel_number(channel)
+        return self._channels.get(channel_id)
+
+    def map_channel_number(self, channel: str | int) -> int:
+        """Remap raw hardware packet channel byte to internal channel ID."""
         if keys_exists(
             self._data,
             "ChannelNumbers",
@@ -1354,22 +700,21 @@ class Module:
             )
         return int(channel)
 
+    def _translate_channel_name(self, channel: str | int) -> int:
+        """Backward-compatible alias for map_channel_number."""
+        return self.map_channel_number(channel)
+
     async def is_loaded(self) -> bool:
         """Check if all name messages have been received."""
-        # if we are loaded, just return
         if self.loaded:
             return True
         if self._is_loading:
             return False
-        # Name loading is still in progress if the buffer is non-empty.
-        # _name is an empty dict (initial state), None (no name spec), or a str (fully loaded).
         if self._name_buffer:
             return False
-        # all channel names should be loaded
         for chan in self._channels.values():
             if not chan.is_loaded():
                 return False
-        # set that  we finished the module loading
         self.loaded = True
         await self._cache()
         return True
@@ -1377,7 +722,6 @@ class Module:
     async def _request_module_status(self) -> None:
         """Request current state of channels."""
         if "Channels" not in self._data:
-            # some modules have no channels
             return
         self._log.info(f"Request module status {self._address}")
 
@@ -1393,12 +737,12 @@ class Module:
                     if counter_msg is None:
                         counter_msg = CounterStatusRequestMessage(self._address)
                     counter_msg.channels.append(int(chan))
-        await self._writer(mod_stat_req_msg)
-        if counter_msg is not None:
-            await self._writer(counter_msg)
+        if self._writer:
+            await self._writer(mod_stat_req_msg)
+            if counter_msg is not None:
+                await self._writer(counter_msg)
 
     async def _request_channel_name(self) -> None:
-        # request the module channel names
         msg_type = commandRegistry.get_command(
             CHANNEL_NAME_REQUEST_COMMAND_CODE, self.get_type()
         )
@@ -1410,7 +754,8 @@ class Module:
             msg.channels = 0xFF
         else:
             msg.channels = list(range(1, (self.number_of_channels() + 1)))
-        await self._writer(msg)
+        if self._writer:
+            await self._writer(msg)
 
     async def __load_memory(self) -> None:
         """Request all needed memory addresses."""
@@ -1420,6 +765,9 @@ class Module:
 
         if self._type == 0x0C:
             self._name = None
+            return
+
+        if not self._writer:
             return
 
         for memory_key, memory_part in self._data["Memory"].items():
@@ -1434,21 +782,13 @@ class Module:
                     msg.low_address = addr[1]
                     await self._writer(msg)
             elif memory_key in {"ModuleName", "SensorName"}:
-                # example:
-                # "ModuleName": "00DD-00E9;01DD-01E9;02DD-02E9;03DD-03E9;04DD-04E8",
-                # request using MermoryDataBlock message, requests 4 bytes
                 for block in memory_part.split(";"):
                     addr_start_str, addr_end_str = block.split("-")
-                    # Convert to integer addresses
                     addr_start_int = int("0x" + addr_start_str, 0)
                     addr_end_int = int("0x" + addr_end_str, 0)
-                    # Split into 4-byte blocks
                     current_addr = addr_start_int
                     while current_addr <= addr_end_int:
-                        block_end = min(
-                            current_addr + 3, addr_end_int
-                        )  # 4 bytes = current + 3
-                        # Convert back to high/low address bytes
+                        block_end = min(current_addr + 3, addr_end_int)
                         addr_start = struct.unpack(
                             ">BB", struct.pack(">h", current_addr)
                         )
@@ -1507,9 +847,6 @@ class Module:
                 )
                 continue
 
-            # The spec's Channels keys are the canonical internal channel
-            # numbers. The name-map translation only applies to channel
-            # identifiers reported in incoming messages, not to creation.
             chan_num = int(chan)
             self._channels[chan_num] = cls(
                 module=self,
@@ -1533,166 +870,11 @@ class Module:
                     dimmer_channel.slider_scale = self._data["sliderScale"]
 
 
-class VmbDali(Module):
-    """DALI has a variable number of channels.
 
-    Therefore we create a module that first creates 64 placeholder channels.
-    After that it requests the DALI device settings to determine the actual channels.
-    """
 
-    def __init__(
-        self,
-        module_address: int,
-        module_type: int,
-        serial: int | str | None = None,
-        memorymap: int | None = None,
-        build_year: int | None = None,
-        build_week: int | None = None,
-        cache_dir: str | None = None,
-        on_load_finished: Callable[[Module], Awaitable[None]] | None = None,
-    ) -> None:
-        """Initialize DALI module."""
-        super().__init__(
-            module_address,
-            module_type,
-            serial,
-            memorymap,
-            build_year,
-            build_week,
-            cache_dir,
-            on_load_finished,
-        )
-        self.group_members: dict[int, set[int]] = {}
+def __getattr__(name: str) -> Any:
+    if name == "VmbDali":
+        from velbusaio.vmbdali import VmbDali  # noqa: PLC0415
 
-    def get_initial_timeout(self) -> int:
-        """Get initial timeout for loading this module."""
-        return 100000
-
-    async def _load_default_channels(self) -> None:
-        for chan in range(1, 64 + 1):
-            self._channels[chan] = Channel(
-                module=self,
-                num=chan,
-                name="placeholder",
-                nameEditable=True,
-                subDevice=True,
-                writer=self._writer,
-                address=self._address,
-            )
-            # Placeholders will keep this module loading
-            # Until the DaliDeviceSettings messages either delete or replace these placeholder's
-            # with actual channels
-        await self._request_dali_channels()
-
-    async def _request_dali_channels(self):
-        msg_type = commandRegistry.get_command(
-            DALI_DEVICE_SETTINGS_REQUEST_COMMAND_CODE, self.get_type()
-        )
-        msg: DaliDeviceSettingsRequest = msg_type(self._address)
-        msg.priority = PRIORITY_LOW
-        msg.channel = 81  # all
-        msg.settings = None  # all
-        await self._writer(msg)
-
-    async def on_message(self, message: Message) -> None:
-        """Process received message."""
-        if isinstance(message, DaliDeviceSettingMsg):
-            if isinstance(message.data, DaliDeviceTypeMsg):
-                if message.data.device_type == DaliDeviceType.NoDevicePresent:
-                    if message.channel in self._channels:
-                        del self._channels[message.channel]
-                else:
-                    # Any present DALI device (LedModule, Dimmer, and the other
-                    # lamp types) is exposed as a dimmable channel. Only
-                    # NoDevicePresent slots are removed above.
-                    cache = self._loaded_cache
-                    if (
-                        "channels" in cache
-                        and str(message.channel) in cache["channels"]
-                        and cache["channels"][str(message.channel)]["type"] == "Dimmer"
-                    ):
-                        # If we have a cached dimmer channel, use that name
-                        name = cache["channels"][str(message.channel)]["name"]
-                        self._channels[message.channel] = Dimmer(
-                            self,
-                            message.channel,
-                            name,
-                            False,  # set False to enable an already loaded Dimmer
-                            True,
-                            self._writer,
-                            self._address,
-                            slider_scale=254,
-                        )
-                    elif self._channels.get(message.channel).__class__ != Dimmer:
-                        # New or changed type, replace channel:
-                        self._channels[message.channel] = Dimmer(
-                            self,
-                            message.channel,
-                            "",
-                            True,
-                            True,
-                            self._writer,
-                            self._address,
-                            slider_scale=254,
-                        )
-                        await self._request_single_channel_name(message.channel)
-
-            elif isinstance(message.data, MemberOfGroupMsg):
-                for group in range(15 + 1):
-                    this_group_members = self.group_members.setdefault(group, set())
-                    if message.data.member_of_group[group]:
-                        this_group_members.add(message.channel)
-                    elif message.channel in this_group_members:
-                        this_group_members.remove(message.channel)
-
-        elif isinstance(message, PushButtonStatusMessage):
-            _channel_offset = self.calc_channel_offset(message.address)
-            for channel in message.opened:
-                if _channel_offset + channel > 64:  # ignore groups
-                    continue
-                await self._update_channel((_channel_offset + channel), {"state": 0})
-            # ignore message.closed: we don't know at what dimlevel they're started
-
-        elif isinstance(message, DimValueStatus):
-            for offset, dim_value in enumerate(message.dim_values):
-                channel = message.channel + offset
-                if channel <= 64:  # channel
-                    await self._update_channel(channel, {"state": dim_value})
-                elif channel <= 80:  # group
-                    group_num = channel - 65
-                    for chan in self.group_members.get(group_num, []):
-                        await self._update_channel(chan, {"state": dim_value})
-                else:  # broadcast
-                    for channel_obj in self._channels.values():
-                        await channel_obj.update({"state": dim_value})
-
-        elif isinstance(
-            message,
-            (
-                SetLedMessage,
-                ClearLedMessage,
-                FastBlinkingLedMessage,
-                SlowBlinkingLedMessage,
-            ),
-        ):
-            pass
-
-        else:
-            return await super().on_message(message)
-        return None
-
-    async def _request_channel_name(self) -> None:
-        # Channel names are requested after channel scan
-        # don't do them here (at initialization time)
-        pass
-
-    async def _request_single_channel_name(self, channel_num: int) -> None:
-        msg_type = commandRegistry.get_command(
-            CHANNEL_NAME_REQUEST_COMMAND_CODE, self.get_type()
-        )
-        if msg_type is None:
-            return
-        msg = msg_type(self._address)
-        msg.priority = PRIORITY_LOW
-        msg.channels = channel_num
-        await self._writer(msg)
+        return VmbDali
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

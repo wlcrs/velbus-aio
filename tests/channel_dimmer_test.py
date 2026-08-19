@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 from velbusaio.channels import Dimmer
+from velbusaio.messages.restore_dimmer import RestoreDimmerMessage
+from velbusaio.messages.set_dimmer import SetDimmerMessage
 
 
 class TestDimmer:
@@ -31,21 +33,24 @@ class TestDimmer:
     async def test_is_on_when_on(self, mock_module, mock_writer):
         """Test checking if dimmer is on."""
         dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
-        await dimmer.update({"state": 50})
+        dimmer.state = 50
+        await dimmer.maybe_status_update()
         assert dimmer.is_on()
 
     @pytest.mark.asyncio
     async def test_is_on_when_off(self, mock_module, mock_writer):
         """Test checking if dimmer is off."""
         dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
-        await dimmer.update({"state": 0})
+        dimmer.state = 0
+        await dimmer.maybe_status_update()
         assert not dimmer.is_on()
 
     @pytest.mark.asyncio
     async def test_get_dimmer_state(self, mock_module, mock_writer):
         """Test getting dimmer state as percentage."""
         dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
-        await dimmer.update({"state": 50})
+        dimmer.state = 50
+        await dimmer.maybe_status_update()
         assert dimmer.get_dimmer_state() == 50
 
     @pytest.mark.asyncio
@@ -54,38 +59,31 @@ class TestDimmer:
         dimmer = Dimmer(
             mock_module, 1, "Dimmer", False, True, mock_writer, 0x01, slider_scale=254
         )
-        await dimmer.update({"state": 127})
+        dimmer.state = 127
+        await dimmer.maybe_status_update()
         assert dimmer.get_dimmer_state() == 50
 
     @pytest.mark.asyncio
     async def test_set_dimmer_state(self, mock_module, mock_writer):
         """Test setting dimmer state."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
+        await dimmer.set_dimmer_state(75, transitiontime=5)
 
-            dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
-            await dimmer.set_dimmer_state(75, transitiontime=5)
-
-            mock_registry.get_command.assert_called_once_with(0x07, 0x01)
-            assert mock_msg.dimmer_state == 75
-            assert mock_msg.dimmer_transitiontime == 5
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, SetDimmerMessage)
+        assert sent_msg.dimmer_state == 75
+        assert sent_msg.dimmer_transitiontime == 5
+        assert sent_msg.dimmer_channels == [1]
 
     @pytest.mark.asyncio
     async def test_restore_dimmer_state(self, mock_module, mock_writer):
         """Test restoring dimmer to last known state."""
-        with patch("velbusaio.channels.commandRegistry") as mock_registry:
-            mock_msg_class = Mock()
-            mock_registry.get_command.return_value = mock_msg_class
-            mock_msg = Mock()
-            mock_msg_class.return_value = mock_msg
+        dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
+        await dimmer.restore_dimmer_state(transitiontime=3)
 
-            dimmer = Dimmer(mock_module, 1, "Dimmer", False, True, mock_writer, 0x01)
-            await dimmer.restore_dimmer_state(transitiontime=3)
-
-            mock_registry.get_command.assert_called_once_with(0x11, 0x01)
-            assert mock_msg.dimmer_transitiontime == 3
-            mock_writer.assert_called_once()
+        mock_writer.assert_called_once()
+        sent_msg = mock_writer.call_args[0][0]
+        assert isinstance(sent_msg, RestoreDimmerMessage)
+        assert sent_msg.dimmer_transitiontime == 3
+        assert sent_msg.dimmer_channels == [1]

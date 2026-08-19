@@ -17,6 +17,7 @@ def pytest_configure(config):
 def mock_module():
     """Create a mock module for testing."""
     module = Mock()
+    module.get_address.return_value = 0x01
     module.get_type.return_value = 0x01
     module.get_type_name.return_value = "TestModule"
     module.get_serial.return_value = "12345"
@@ -29,6 +30,10 @@ def mock_module():
     module.remove_on_connect = Mock()
     module.on_disconnect = Mock()
     module.remove_on_disconnect = Mock()
+    module.has_command = Mock(return_value=True)
+    module.create_message.side_effect = (
+        lambda msg_cls, address=None: msg_cls(0x01 if address is None else address)
+    )
     return module
 
 

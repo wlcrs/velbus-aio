@@ -28,7 +28,7 @@ async def test_temperature_same_precision(
     for temp in temperature_profile:
         temp_truncated_to_precision = math.floor(temp / precision) * precision
         await ch.maybe_update_temperature(temp_truncated_to_precision, precision)
-        stored_temp = ch._cur
+        stored_temp = ch.cur
         assert stored_temp <= temp < stored_temp + precision
 
 
@@ -42,7 +42,7 @@ async def test_temperature_alternating_precision(
             temp_truncated_to_precision = math.floor(temp / precision) * precision
             await ch.maybe_update_temperature(temp_truncated_to_precision, precision)
 
-            stored_temp = ch._cur
+            stored_temp = ch.cur
             stored_temp_truncated_to_precision = (
                 math.floor(stored_temp / precision) * precision
             )
