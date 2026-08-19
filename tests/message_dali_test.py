@@ -15,6 +15,7 @@ import sys
 
 import pytest
 
+from tests.utils import assert_roundtrip
 import velbusaio.command_registry as cr
 from velbusaio.const import PRIORITY_LOW
 import velbusaio.messages  # noqa: F401  # ensure the package is registered in the real registry
@@ -102,17 +103,21 @@ class TestDaliDeviceSettingsRequest:
 
     def test_populate_without_settings(self):
         """Test Populate without settings."""
+        data = bytes([0x05, 0x00])
         msg = DaliDeviceSettingsRequest()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0x00]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg.channel == 5
         assert msg.data_source == DataSource.FromMemory
         assert msg.settings is None
+        assert_roundtrip(msg, data)
 
     def test_populate_with_settings(self):
         """Test Populate with settings."""
+        data = bytes([0x05, 0x00, 0x19])
         msg = DaliDeviceSettingsRequest()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x05, 0x00, 0x19]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg.settings == 0x19
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary_all(self):
         """Test Data to binary all."""

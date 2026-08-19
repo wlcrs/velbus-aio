@@ -1,9 +1,8 @@
-"""Unit tests for the request/simple command message classes."""
-
 from __future__ import annotations
 
 import pytest
 
+from tests.utils import assert_roundtrip
 from velbusaio.const import PRIORITY_HIGH, PRIORITY_LOW
 from velbusaio.message import ParserError
 from velbusaio.messages.bus_active import BusActiveMessage
@@ -46,9 +45,11 @@ class TestBusActiveMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([])
         msg = BusActiveMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([]))
+        msg.populate(PRIORITY_HIGH, 0x01, False, data)
         assert msg.address == 0x01
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -60,9 +61,11 @@ class TestBusOffMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([])
         msg = BusOffMessage()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg.address == 0x01
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""

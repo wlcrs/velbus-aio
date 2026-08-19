@@ -1,9 +1,8 @@
-"""Unit tests for the thermostat mode-switch message classes."""
-
 from __future__ import annotations
 
 import pytest
 
+from tests.utils import assert_roundtrip
 from velbusaio.const import PRIORITY_LOW
 from velbusaio.messages.switch_to_comfort import SwitchToComfortMessage
 from velbusaio.messages.switch_to_day import SwitchToDayMessage
@@ -34,7 +33,10 @@ class TestSwitchToModeMessages:
 
     def test_populate_sets_attributes(self, cls, code):
         """Test Populate sets attributes."""
+        data = bytes([])
         msg = cls()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg.address == 0x01
         assert msg.rtr is False
+        assert_roundtrip(msg, bytes([0x00, 0x00]))
+

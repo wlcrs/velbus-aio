@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.utils import assert_roundtrip
 from velbusaio.const import PRIORITY_FIRMWARE, PRIORITY_LOW
 from velbusaio.messages.memory_data import MemoryDataMessage
 from velbusaio.messages.memory_data_block import MemoryDataBlockMessage
@@ -94,11 +95,13 @@ class TestSetDate:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x0F, 0x06, 0x07, 0xE9])
         msg = SetDate()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x0F, 0x06, 0x07, 0xE9]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg._day == 15
         assert msg._mon == 6
         assert msg._year == 2025
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -111,9 +114,11 @@ class TestSetDaylightSaving:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01])
         msg = SetDaylightSaving()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg._ds == 1
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -126,11 +131,13 @@ class TestSetRealtimeClock:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x02, 0x0C, 0x1E])
         msg = SetRealtimeClock()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x02, 0x0C, 0x1E]))
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg._wday == 2
         assert msg._hour == 12
         assert msg._min == 30
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""

@@ -1,9 +1,8 @@
-"""Unit tests for the control/actuation message classes."""
-
 from __future__ import annotations
 
 import pytest
 
+from tests.utils import assert_roundtrip
 from velbusaio.const import PRIORITY_HIGH, PRIORITY_LOW
 from velbusaio.message import ParserError
 from velbusaio.messages.cancel_forced_off import CancelForcedOff
@@ -44,10 +43,12 @@ class TestCoverOffMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01])
         msg = CoverOffMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01]))
+        msg.populate(PRIORITY_HIGH, 0x01, False, data)
         assert msg.channel == 1
         assert msg.priority == PRIORITY_HIGH
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -85,10 +86,12 @@ class TestCoverUpMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01, 0, 0, 5])
         msg = CoverUpMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0, 0, 5]))
+        msg.populate(PRIORITY_HIGH, 0x01, False, data)
         assert msg.channel == 1
         assert msg.delay_time == 5
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -121,10 +124,12 @@ class TestCoverDownMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01, 0, 0, 5])
         msg = CoverDownMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 0, 0, 5]))
+        msg.populate(PRIORITY_HIGH, 0x01, False, data)
         assert msg.channel == 1
         assert msg.delay_time == 5
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -150,10 +155,12 @@ class TestCoverPosMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01, 50])
         msg = CoverPosMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x01, 50]))
+        msg.populate(PRIORITY_HIGH, 0x01, False, data)
         assert msg.channel == 1
         assert msg.position == 50
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""
@@ -168,9 +175,11 @@ class TestSwitchRelayOffMessage:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x03])
         msg = SwitchRelayOffMessage()
-        msg.populate(PRIORITY_HIGH, 0x01, False, bytes([0x03]))
+        msg.populate(PRIORITY_HIGH, 0x01, False, data)
         assert msg.relay_channels == [1, 2]
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tests.utils import assert_roundtrip
 from velbusaio.const import PRIORITY_LOW
 from velbusaio.messages.channel_name_part1 import (
     ChannelNamePart1Message,
@@ -26,10 +27,12 @@ class TestChannelNamePart1Message:
 
     def test_populate(self):
         """Test Populate."""
+        data = bytes([0x01]) + b"NAME12"
         msg = ChannelNamePart1Message()
-        msg.populate(PRIORITY_LOW, 0x01, False, bytes([0x01]) + b"NAME12")
+        msg.populate(PRIORITY_LOW, 0x01, False, data)
         assert msg.channel == 1
         assert msg.name == "NAME12"
+        assert_roundtrip(msg, data)
 
     def test_data_to_binary(self):
         """Test Data to binary."""

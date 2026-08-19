@@ -36,3 +36,4 @@ def mock_module():
 def mock_writer():
     """Create a mock writer for testing."""
     return AsyncMock()
+
