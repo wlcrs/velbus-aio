@@ -7,11 +7,16 @@ from unittest.mock import AsyncMock
 import pytest
 
 from velbusaio.actions import (
+    ActionCatalog,
+    ActionItemSpec,
     ActionSlot,
     ActionTable,
+    action_label,
     bit_to_channel,
     build_action_tables,
     channel_to_bit,
+    iter_action_options,
+    load_action_catalog,
     resolve_action_code,
 )
 from velbusaio.config import ConfigParameter, decode_name, encode_name
@@ -50,6 +55,58 @@ class TestNameCodec:
     def test_decode_stops_at_nul(self):
         """Test Decode stops at nul."""
         assert decode_name(b"Hall\x00\xff") == "Hall"
+
+
+class TestActionCatalog:
+    """Tests for ActionCatalog and ActionItemSpec dataclasses."""
+
+    def test_load_action_catalog(self):
+        """Test loading action catalog into dataclass."""
+        catalog = load_action_catalog("relay_classic")
+        assert isinstance(catalog, ActionCatalog)
+        assert catalog.id == "relay_classic"
+        assert 0x09 in catalog.actions
+        item = catalog.actions[0x09]
+        assert isinstance(item, ActionItemSpec)
+        assert item.code == 0x09
+        assert item.code_hex == "09"
+        assert item.key == "toggle"
+        assert item.label == "Toggle"
+        assert item.times == 0
+        assert item.time_labels == ()
+
+    def test_find_action(self):
+        """Test finding action by key, label, hex, or int."""
+        catalog = load_action_catalog("relay_classic")
+        # By key
+        assert catalog.find_action("toggle") == catalog.actions[0x09]
+        # By label
+        assert catalog.find_action("Toggle") == catalog.actions[0x09]
+        # By hex string
+        assert catalog.find_action("09") == catalog.actions[0x09]
+        # By int
+        assert catalog.find_action(0x09) == catalog.actions[0x09]
+        # Non-existent
+        assert catalog.find_action("non_existent") is None
+
+    def test_unknown_catalog_raises(self):
+        """Test loading non-existent catalog raises error."""
+        with pytest.raises(VelbusConfigError):
+            load_action_catalog("unknown_catalog_xyz")
+
+    def test_iter_action_options(self):
+        """Test iter_action_options returns dict representation."""
+        options = list(iter_action_options("relay_classic"))
+        assert len(options) > 0
+        toggle_opt = next(opt for opt in options if opt["key"] == "toggle")
+        assert toggle_opt["code"] == 0x09
+        assert toggle_opt["code_hex"] == "09"
+        assert toggle_opt["label"] == "Toggle"
+
+    def test_action_label_helper(self):
+        """Test action_label helper returns label or hex fallback."""
+        assert action_label("relay_classic", 0x09) == "Toggle"
+        assert action_label("relay_classic", 0xFE) == "0xFE"
 
 
 class TestActionSlot:

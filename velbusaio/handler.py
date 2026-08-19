@@ -6,8 +6,6 @@
 from __future__ import annotations
 
 import asyncio
-import importlib.resources
-import json
 import logging
 import pathlib
 import time
@@ -22,6 +20,8 @@ from velbusaio.messages.module_subtype import ModuleSubTypeMessage
 from velbusaio.messages.module_type import ModuleTypeMessage
 from velbusaio.module_cache import load_module_from_cache
 from velbusaio.module_loader import load_module_from_bus
+from velbusaio.protocol_spec import ProtocolMessageSpec
+from velbusaio.module_spec_loader import load_broadcast_spec, load_ignore_spec
 
 if TYPE_CHECKING:
     from velbusaio.controller import Velbus
@@ -57,15 +57,6 @@ class PacketHandler:
         """Report progress to the callback."""
         if self._progress_callback:
             self._progress_callback(progress_type, value)
-
-    async def read_protocol_data(self):
-        """Read the protocol data from the json files."""
-        with importlib.resources.path(__name__, "module_spec/broadcast.json") as fspath:
-            async with await anyio.open_file(fspath) as protocol_file:
-                self.broadcast = json.loads(await protocol_file.read())
-        with importlib.resources.path(__name__, "module_spec/ignore.json") as fspath:
-            async with await anyio.open_file(fspath) as protocol_file:
-                self.ignore = json.loads(await protocol_file.read())
 
     def empty_cache(self) -> bool:
         """Check if the cache is empty."""
@@ -250,15 +241,15 @@ class PacketHandler:
                 self._handle_module_subtype(msg)
 
         # ignore broadcast
-        elif hex_cmd in self.broadcast:
+        elif hex_cmd in broadcast_spec:
             self._log.debug(
-                f"Received broadcast message {self.broadcast[hex_cmd]['Name']} from {address}, ignoring"
+                f"Received broadcast message {broadcast_spec[hex_cmd].name} from {address}, ignoring"
             )
 
         # ignore messages
-        elif hex_cmd in self.ignore:
+        elif hex_cmd in ignore_spec:
             self._log.debug(
-                f"Received ignored message {self.ignore[hex_cmd]['Name']} from {address}, ignoring"
+                f"Received ignored message {ignore_spec[hex_cmd].name} from {address}, ignoring"
             )
 
         # handle other messages for modules that are already scanned

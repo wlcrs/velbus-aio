@@ -9,6 +9,7 @@ from typing import Any
 
 from velbusaio.helpers import h2
 from velbusaio.module_spec import ModuleSpec
+from velbusaio.protocol_spec import ProtocolMessageSpec
 
 
 def format_build(build_year: int | None, build_week: int | None) -> str | None:
@@ -51,6 +52,31 @@ def check_memory_map_outdated(
     )
     return True
 
+
+
+def load_broadcast_spec() -> dict[str, ProtocolMessageSpec]:
+    """Load broadcast message specifications."""
+    path = importlib.resources.files("velbusaio").joinpath("module_spec/broadcast.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        cmd_hex: ProtocolMessageSpec.from_dict(cmd_hex, spec)
+        for cmd_hex, spec in data.items()
+    }
+
+broadcast_spec : dict[str, ProtocolMessageSpec]  = load_broadcast_spec()
+
+
+def load_ignore_spec() -> dict[str, ProtocolMessageSpec]:
+    """Load ignored message specifications."""
+    path = importlib.resources.files("velbusaio").joinpath("module_spec/ignore.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        cmd_hex: ProtocolMessageSpec.from_dict(cmd_hex, spec)
+        for cmd_hex, spec in data.items()
+    }
+    return _IGNORE_CACHE
+
+ignore_spec : dict[str, ProtocolMessageSpec]  = load_ignore_spec()
 
 _SPEC_CACHE: dict[int, ModuleSpec] = {}
 

@@ -27,7 +27,7 @@ channel number (glass panels / -20 inputs). Unused slots are 0xFF.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import importlib.resources
 import json
 import logging
@@ -44,7 +44,107 @@ _SLOT_SIZE_CLASSIC: Final = 6
 _SLOT_SIZE_V2: Final = 7
 _LOGGER = logging.getLogger("velbus-actions")
 
-_CATALOG_CACHE: dict[str, dict[str, Any]] = {}
+
+@dataclass(frozen=True, slots=True)
+class ActionItemSpec:
+    """Specification for a single action entry in an action catalog."""
+
+    code: int
+    key: str
+    label: str
+    times: int = 0
+    time_labels: tuple[str, ...] = ()
+
+    @property
+    def code_hex(self) -> str:
+        """Hexadecimal string representation of the action code."""
+        return f"{self.code:02X}"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation."""
+        return {
+            "code": self.code,
+            "code_hex": self.code_hex,
+            "key": self.key,
+            "label": self.label,
+            "times": self.times,
+            "time_labels": list(self.time_labels),
+        }
+
+    @classmethod
+    def from_dict(cls, code_hex: str, data: dict[str, Any]) -> ActionItemSpec:
+        """Create an ActionItemSpec from dictionary data."""
+        return cls(
+            code=int(code_hex, 16),
+            key=data.get("key", ""),
+            label=data.get("label", ""),
+            times=int(data.get("times", 0)),
+            time_labels=tuple(data.get("time_labels", ())),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ActionCatalog:
+    """Specification for an action catalog (e.g. relay_classic, dimmer_v2)."""
+
+    id: str
+    description: str = ""
+    actions: dict[int, ActionItemSpec] = field(default_factory=dict)
+    _by_key: dict[str, ActionItemSpec] = field(default_factory=dict, repr=False)
+    _by_label: dict[str, ActionItemSpec] = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ActionCatalog:
+        """Create an ActionCatalog from dictionary data."""
+        actions: dict[int, ActionItemSpec] = {}
+        by_key: dict[str, ActionItemSpec] = {}
+        by_label: dict[str, ActionItemSpec] = {}
+
+        for code_hex, action_data in data.get("actions", {}).items():
+            item = ActionItemSpec.from_dict(code_hex, action_data)
+            actions[item.code] = item
+            if item.key:
+                by_key[item.key.lower()] = item
+            if item.label:
+                by_label[item.label.lower()] = item
+
+        return cls(
+            id=data.get("id", ""),
+            description=data.get("description", ""),
+            actions=actions,
+            _by_key=by_key,
+            _by_label=by_label,
+        )
+
+    def get_action(self, code: int) -> ActionItemSpec | None:
+        """Get an action item by numeric code."""
+        return self.actions.get(code)
+
+    def find_action(self, action: str | int) -> ActionItemSpec | None:
+        """Find an action item by code, key, label, or hex string."""
+        if isinstance(action, int):
+            return self.actions.get(action & 0xFF)
+        needle = action.strip().lower()
+        if needle in self._by_key:
+            return self._by_key[needle]
+        if needle in self._by_label:
+            return self._by_label[needle]
+        if needle.isdigit() or (
+            len(needle) <= 2 and all(c in "0123456789abcdef" for c in needle)
+        ):
+            try:
+                code = (
+                    int(needle, 16)
+                    if any(c in "abcdef" for c in needle)
+                    else int(needle)
+                )
+                return self.actions.get(code)
+            except ValueError:
+                pass
+        return None
+
+
+_CATALOG_CACHE: dict[str, ActionCatalog] = {}
 
 Layout = Literal["per_channel", "shared"]
 SubjectEncoding = Literal[
@@ -73,7 +173,7 @@ def bit_to_channel(bit: int) -> int | None:
     return bit.bit_length()
 
 
-def load_action_catalog(catalog_id: str) -> dict[str, Any]:
+def load_action_catalog(catalog_id: str) -> ActionCatalog:
     """Load an action catalog JSON by id (cached)."""
     if catalog_id in _CATALOG_CACHE:
         return _CATALOG_CACHE[catalog_id]
@@ -84,8 +184,9 @@ def load_action_catalog(catalog_id: str) -> dict[str, Any]:
             data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as err:
         raise VelbusConfigError(f"Unknown action catalog '{catalog_id}'") from err
-    _CATALOG_CACHE[catalog_id] = data
-    return data
+    catalog = ActionCatalog.from_dict(data)
+    _CATALOG_CACHE[catalog_id] = catalog
+    return catalog
 
 
 def resolve_action_code(catalog_id: str, action: str | int) -> int:
@@ -93,34 +194,18 @@ def resolve_action_code(catalog_id: str, action: str | int) -> int:
     if isinstance(action, int):
         return action & 0xFF
     catalog = load_action_catalog(catalog_id)
-    actions = catalog.get("actions", {})
-    needle = action.strip().lower()
-    if needle.isdigit() or (
-        len(needle) <= 2 and all(c in "0123456789abcdef" for c in needle)
-    ):
-        try:
-            code = (
-                int(needle, 16) if any(c in "abcdef" for c in needle) else int(needle)
-            )
-            if f"{code:02X}" in actions:
-                return code
-        except ValueError:
-            pass
-    for code_hex, meta in actions.items():
-        if (
-            meta.get("key", "").lower() == needle
-            or meta.get("label", "").lower() == needle
-        ):
-            return int(code_hex, 16)
+    item = catalog.find_action(action)
+    if item is not None:
+        return item.code
     raise VelbusConfigError(f"Unknown action '{action}' in catalog '{catalog_id}'")
 
 
 def action_label(catalog_id: str, code: int) -> str:
     """Return a human-readable label for an action code."""
     catalog = load_action_catalog(catalog_id)
-    meta = catalog.get("actions", {}).get(f"{code:02X}")
-    if meta:
-        return str(meta.get("label", f"0x{code:02X}"))
+    item = catalog.get_action(code)
+    if item is not None:
+        return item.label
     return f"0x{code:02X}"
 
 
@@ -214,8 +299,8 @@ class ActionSlot:
     def action_key(self) -> str | None:
         """Catalog key for the action, if known."""
         catalog = load_action_catalog(self.catalog_id)
-        meta = catalog.get("actions", {}).get(f"{self.action_code:02X}")
-        return None if meta is None else str(meta.get("key"))
+        item = catalog.get_action(self.action_code)
+        return None if item is None else item.key
 
     @property
     def action_label(self) -> str:
@@ -906,12 +991,5 @@ def build_action_tables(
 def iter_action_options(catalog_id: str = "relay_classic") -> Iterable[dict[str, Any]]:
     """Yield catalog action metadata for UI option lists."""
     catalog = load_action_catalog(catalog_id)
-    for code_hex, meta in catalog.get("actions", {}).items():
-        yield {
-            "code": int(code_hex, 16),
-            "code_hex": code_hex,
-            "key": meta.get("key"),
-            "label": meta.get("label"),
-            "times": meta.get("times", 0),
-            "time_labels": meta.get("time_labels", []),
-        }
+    for item in catalog.actions.values():
+        yield item.to_dict()
