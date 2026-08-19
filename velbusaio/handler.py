@@ -40,10 +40,8 @@ class PacketHandler:
         self._log = logging.getLogger("velbus-handler")
         self._velbus = velbus
         self._one_address = one_address
-        self._typeResponseReceived = asyncio.Event()
         self._scanLock = asyncio.Lock()
         self._fullScanLock = asyncio.Lock()
-        self._modulescan_address = 0
         self._scan_complete = False
         self._scan_delay_msec = 0
         self.__scan_found_addresses: dict[int, ModuleTypeMessage | None] | None = None
