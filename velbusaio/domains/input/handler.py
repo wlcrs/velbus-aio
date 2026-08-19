@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from velbusaio.domains.input.channel import (
     Button,
-    ButtonCounter,
     ButtonLedState,
+    CounterChannel,
     Sensor,
 )
 from velbusaio.message_router import register_handler
@@ -37,34 +37,36 @@ _LOG = logging.getLogger("velbus-input")
 
 def _get_button(module: Module, raw_channel: int | str) -> Button | None:
     channel_id = module.map_channel_number(raw_channel)
-    buttons = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, Button) and not isinstance(ch, (ButtonCounter, Sensor))
-    }
-    btn = buttons.get(channel_id)
-    if btn is None and not isinstance(
-        module.get_channels().get(channel_id), ButtonCounter
-    ):
+    chan = module.get_channels().get(channel_id)
+    if isinstance(chan, Button) and not isinstance(chan, Sensor):
+        return chan
+    if chan is None or not isinstance(chan, CounterChannel):
         _LOG.warning(
             f"Received button message for non-existent button channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
         )
-    return btn
+    return None
 
 
-def _get_counter(module: Module, raw_channel: int | str) -> ButtonCounter | None:
+def _get_counter(module: Module, raw_channel: int | str) -> CounterChannel | None:
     channel_id = module.map_channel_number(raw_channel)
-    counters = {
-        num: ch
-        for num, ch in module.get_channels().items()
-        if isinstance(ch, ButtonCounter)
-    }
-    counter = counters.get(channel_id)
-    if counter is None:
-        _LOG.warning(
-            f"Received counter message for non-existent counter channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+    chan = module.get_channels().get(channel_id)
+    if isinstance(chan, CounterChannel):
+        return chan
+    if not module.is_loaded() and chan is not None:
+        counter = CounterChannel(
+            module=module,
+            num=chan.get_channel_number(),
+            name=chan.name,
+            nameEditable=getattr(chan, "nameEditable", True),
+            subDevice=chan.is_sub_device(),
+            address=getattr(chan, "_address", module.get_address()),
         )
-    return counter
+        module._channels[channel_id] = counter
+        return counter
+    _LOG.warning(
+        f"Received counter message for non-existent counter channel {raw_channel} (mapped: {channel_id}) on module {module.get_address()}"
+    )
+    return None
 
 
 def _get_sensor(module: Module, raw_channel: int | str) -> Sensor | None:

@@ -21,6 +21,7 @@ from velbusaio.channels import (
     Blind,
     Button,
     ButtonCounter,
+    CounterChannel,
     Dimmer,
     Relay,
     SensorNumber,
@@ -372,7 +373,7 @@ class Velbus:
 
     def get_all_sensor(
         self,
-    ) -> list[ButtonCounter | Temperature | LightValue | SensorNumber]:
+    ) -> list[CounterChannel | Temperature | LightValue | SensorNumber]:
         """Get all sensors."""
         return self._get_all("sensor")
 
@@ -384,7 +385,7 @@ class Velbus:
         """Get all binary sensors."""
         return self._get_all("binary_sensor")
 
-    def get_all_button(self) -> list[Button | ButtonCounter]:
+    def get_all_button(self) -> list[Button]:
         """Get all buttons."""
         return self._get_all("button")
 

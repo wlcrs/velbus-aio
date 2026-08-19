@@ -50,10 +50,13 @@ class TestTemperature:
         temp = Temperature(mock_module, 1, "Temp", False, True, 0x01)
         assert temp.get_sensor_type() == "temperature"
 
-    def test_is_temperature(self, mock_module, mock_writer):
-        """Test checking if channel is temperature."""
+    def test_temperature_protocol(self, mock_module, mock_writer):
+        """Test Temperature channel conforms to Temperature and HasUnit protocols."""
+        from velbusaio.protocols import HasUnit, Temperature as TemperatureProto
+
         temp = Temperature(mock_module, 1, "Temp", False, True, 0x01)
-        assert temp.is_temperature()
+        assert isinstance(temp, TemperatureProto)
+        assert isinstance(temp, HasUnit)
 
     @pytest.mark.asyncio
     async def test_get_max(self, mock_module, mock_writer):

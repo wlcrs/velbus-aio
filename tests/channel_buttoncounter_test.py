@@ -2,7 +2,7 @@
 
 import pytest
 
-from velbusaio.channels import ButtonCounter
+from velbusaio.channels import ButtonCounter, CounterChannel
 from velbusaio.const import (
     ENERGY_KILO_WATT_HOUR,
     VOLUME_CUBIC_METER_HOUR,
@@ -14,73 +14,30 @@ class TestButtonCounter:
     """Test cases for the ButtonCounter channel class."""
 
     def test_get_categories_counter_mode(self, mock_module, mock_writer):
-        """Test button counter categories in counter mode."""
-        button = ButtonCounter(
+        """Test counter categories."""
+        button = CounterChannel(
             mock_module, 1, "Counter", False, True, 0x01
         )
-        button.counter = 100
         assert button.get_categories() == ["sensor"]
 
-    def test_get_categories_counter_mode_zero(self, mock_module, mock_writer):
-        """Test button counter categories when counter value is zero."""
-        button = ButtonCounter(
+    def test_counter_protocols(self, mock_module, mock_writer):
+        """Test CounterChannel conforms to Counter, HasUnit, HasEnergy and not Pressable."""
+        from velbusaio.protocols import Counter, HasEnergy, HasUnit, Pressable
+
+        button = CounterChannel(
             mock_module, 1, "Counter", False, True, 0x01
         )
-        button.counter = 0
-        assert button.get_categories() == ["sensor"]
-
-    def test_get_categories_button_mode(self, mock_module, mock_writer):
-        """Test button counter categories in button mode (no data received yet)."""
-        button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, 0x01
-        )
-        # counter=None means no counter status received; channel acts as button
-        assert button.counter is None
-        assert button.get_categories() == ["binary_sensor", "button"]
-
-    def test_is_counter_channel(self, mock_module, mock_writer):
-        """Test checking if channel is counter."""
-        button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, 0x01
-        )
-        button.counter = 100
-        assert button.is_counter_channel()
-
-        button.counter = None
-        assert not button.is_counter_channel()
-
-    def test_is_counter_channel_zero_counter(self, mock_module, mock_writer):
-        """Test that a zero counter value still classifies as a counter channel."""
-        button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, 0x01
-        )
-        button.counter = 0
-        assert button.is_counter_channel()
-
-    @pytest.mark.asyncio
-    async def test_is_long_pressed(self, mock_module, mock_writer):
-        """Test inherited long-press state accessor."""
-        button = ButtonCounter(
-            mock_module, 1, "Counter", False, True, 0x01
-        )
-        button.long = True
-        await button.maybe_status_update()
-        assert button.is_long_pressed()
-
-        button.long = False
-        await button.maybe_status_update()
-        assert not button.is_long_pressed()
+        assert isinstance(button, Counter)
+        assert isinstance(button, HasUnit)
+        assert isinstance(button, HasEnergy)
+        assert not isinstance(button, Pressable)
 
     def test_get_sensor_type_counter(self, mock_module, mock_writer):
         """Test getting sensor type for counter."""
-        button = ButtonCounter(
+        button = CounterChannel(
             mock_module, 1, "Counter", False, True, 0x01
         )
-        button.counter = 1
         assert button.get_sensor_type() == "counter"
-
-        button.counter = None
-        assert button.get_sensor_type() is None
 
     def test_get_state_with_energy(self, mock_module, mock_writer):
         """Test getting state with energy value."""

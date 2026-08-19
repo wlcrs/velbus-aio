@@ -141,6 +141,10 @@ class Module:
             reserved=reserved_ranges(self._spec.memory),
         )
 
+    def is_loaded(self) -> bool:
+        """Return True if the module has finished its initial load."""
+        return self._got_status.is_set()
+
     async def wait_for_status_messages(self) -> None:
         """Wait for status messages to be received."""
         try:

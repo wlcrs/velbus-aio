@@ -156,23 +156,3 @@ class BaseItem(DirtyTrackingMixin, ABC):
             ]:
                 data[key.lstrip("_")] = value
         return data
-
-    def get_unit(self) -> str | None:
-        """Return the unit of the counter."""
-        return None
-
-    def get_counter_state(self) -> int:
-        """Return the current state of the counter."""
-        return 0
-
-    def get_counter_unit(self) -> str:
-        """Return the unit of the counter."""
-        return ""
-
-    def is_temperature(self) -> bool:
-        """Return if this item is a temperature sensor."""
-        return False
-
-    def is_counter_channel(self) -> bool:
-        """Return if this item is a counter channel."""
-        return False

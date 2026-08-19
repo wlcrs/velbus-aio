@@ -144,9 +144,36 @@ async def load_module_from_cache(
         for num, chan in cache["channels"].items():
             chan_num = int(num)
             if chan_num in module._channels:  # noqa: SLF001
+                chan_type = chan.get("type")
+                existing_chan = module._channels[chan_num]  # noqa: SLF001
+                if chan_type in ("CounterChannel", "ButtonCounter") or "Unit" in chan:
+                    from velbusaio.channels import CounterChannel  # noqa: PLC0415
+
+                    if not isinstance(existing_chan, CounterChannel):
+                        counter = CounterChannel(
+                            module=module,
+                            num=chan_num,
+                            name=chan.get("name", existing_chan.name),
+                            nameEditable=getattr(existing_chan, "nameEditable", True),
+                            subDevice=chan.get("subdevice", existing_chan.is_sub_device()),
+                            address=getattr(existing_chan, "_address", module.get_address()),
+                        )
+                        module._channels[chan_num] = counter  # noqa: SLF001
+                    if "Unit" in chan:
+                        module._channels[chan_num].set_unit(chan["Unit"])  # noqa: SLF001
+                elif chan_type == "Button":
+                    from velbusaio.channels import Button, CounterChannel  # noqa: PLC0415
+
+                    if isinstance(existing_chan, CounterChannel) or not isinstance(existing_chan, Button):
+                        btn = Button(
+                            module=module,
+                            num=chan_num,
+                            name=chan.get("name", existing_chan.name),
+                            nameEditable=getattr(existing_chan, "nameEditable", True),
+                            subDevice=chan.get("subdevice", existing_chan.is_sub_device()),
+                            address=getattr(existing_chan, "_address", module.get_address()),
+                        )
+                        module._channels[chan_num] = btn  # noqa: SLF001
                 module._channels[chan_num].name = chan.get("name", "")  # noqa: SLF001
-                unit_channel = module._channels[chan_num]  # noqa: SLF001
-                if isinstance(unit_channel, ButtonCounter) and "Unit" in chan:
-                    unit_channel.set_unit(chan["Unit"])
 
     return module

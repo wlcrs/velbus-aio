@@ -60,14 +60,6 @@ class Channel(BaseItem):
         target_addr = self._address if address is None else address
         return self.module.create_message(message_cls, address=target_addr)
 
-    def is_counter_channel(self) -> bool:
-        """Return if this channel is a counter channel."""
-        return False
-
-    def is_temperature(self) -> bool:
-        """Return if this channel is a temperature sensor."""
-        return False
-
     def set_sub_device(self, sub_device: bool) -> None:
         """Set if this channel is a subdevice."""
         self._subDevice = sub_device
@@ -153,37 +145,8 @@ class Channel(BaseItem):
         """Get the categories (mainly for home-assistant)."""
         return []
 
-    def get_counter_state(self) -> int:
-        """Return the current state of the counter."""
-        raise NotImplementedError
-
-    def get_counter_unit(self) -> str:
-        """Return the unit of the counter."""
-        raise NotImplementedError
-
-    def get_max(self) -> int | None:
-        """Return the maximum value."""
-        raise NotImplementedError
-
-    def get_min(self) -> int | None:
-        """Return the minimum value."""
-        raise NotImplementedError
-
-    def is_water(self) -> bool:
-        """Return if this channel is a water channel."""
-        return False
-
-    async def press(self) -> None:
-        """Simulate a press action on this channel."""
-        raise NotImplementedError
-
     def get_sensor_type(self) -> str | None:
         """Return the sensor type."""
-        return None
-
-    @property
-    def energy(self) -> float | None:
-        """Return the accumulated energy in kWh, or None if not applicable."""
         return None
 
     def get_action_table(self):
@@ -264,7 +227,14 @@ def __getattr__(name: str) -> Any:
         import velbusaio.domains.cover.channel as mod  # noqa: PLC0415
 
         return getattr(mod, name)
-    if name in ("Button", "ButtonCounter", "ButtonLedState", "Sensor", "SensorNumber"):
+    if name in (
+        "Button",
+        "ButtonCounter",
+        "ButtonLedState",
+        "CounterChannel",
+        "Sensor",
+        "SensorNumber",
+    ):
         import velbusaio.domains.input.channel as mod  # noqa: PLC0415
 
         return getattr(mod, name)
@@ -282,6 +252,7 @@ __all__ = [
     "ButtonCounter",
     "ButtonLedState",
     "Channel",
+    "CounterChannel",
     "Dimmer",
     "EdgeLit",
     "Relay",

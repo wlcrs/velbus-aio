@@ -46,8 +46,24 @@ async def create_module_from_vlp(
             chan_num = int(chan_addr)
         except ValueError:
             continue
-        if chan_num in module._channels and isinstance(chan_info, dict) and "Name" in chan_info:  # noqa: SLF001
-            module._channels[chan_num].name = chan_info["Name"]  # noqa: SLF001
+        if chan_num in module._channels and isinstance(chan_info, dict):  # noqa: SLF001
+            if "Name" in chan_info:
+                module._channels[chan_num].name = chan_info["Name"]  # noqa: SLF001
+            unit = chan_info.get("Unit")
+            if unit and unit != "reserved":
+                from velbusaio.channels import CounterChannel  # noqa: PLC0415
+
+                existing_chan = module._channels[chan_num]  # noqa: SLF001
+                counter = CounterChannel(
+                    module=module,
+                    num=chan_num,
+                    name=existing_chan.name,
+                    nameEditable=True,
+                    subDevice=existing_chan.is_sub_device(),
+                    address=addr,
+                )
+                counter.set_unit(unit)
+                module._channels[chan_num] = counter  # noqa: SLF001
     return module
 
 

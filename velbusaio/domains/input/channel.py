@@ -177,14 +177,14 @@ class Button(Channel):
         await self.send_message(msg)
 
 
-class ButtonCounter(Button):
-    """A ButtonCounter channel."""
+class CounterChannel(Channel):
+    """A Counter sensor channel."""
 
     Unit: str | None = None
     pulses: int | None = None
     counter: int | None = None
     delay: int | None = None
-    power: int | None = None
+    power: int | float | None = None
     raw_energy: int | None = None
 
     async def update_counter(
@@ -198,7 +198,7 @@ class ButtonCounter(Button):
         await self.maybe_status_update()
 
     async def update_values(
-        self, *, power: int | None = None, energy: int | None = None
+        self, *, power: int | float | None = None, energy: int | None = None
     ) -> None:
         """Update power and energy values."""
         if power is not None:
@@ -209,27 +209,11 @@ class ButtonCounter(Button):
 
     def get_categories(self) -> list[str]:
         """Return the categories for this channel."""
-        if (
-            self.counter is not None
-            or self.power is not None
-            or self.raw_energy is not None
-        ):
-            return ["sensor"]
-        return ["binary_sensor", "button"]
+        return ["sensor"]
 
-    def is_counter_channel(self) -> bool:
-        """Return if this channel is a counter channel."""
-        return (
-            self.counter is not None
-            or self.power is not None
-            or self.raw_energy is not None
-        )
-
-    def get_sensor_type(self) -> str | None:
+    def get_sensor_type(self) -> str:
         """Return the sensor type."""
-        if self.counter:
-            return "counter"
-        return None
+        return "counter"
 
     @property
     def energy(self) -> float | None:
@@ -287,6 +271,9 @@ class ButtonCounter(Button):
     def is_water(self) -> bool:
         """Return if this channel is a water channel."""
         return bool(self.counter and self.Unit == VOLUME_LITERS_HOUR)
+
+
+ButtonCounter = CounterChannel
 
 
 class Sensor(Button):

@@ -6,6 +6,7 @@ from velbusaio.domains.input.channel import (
     Button,
     ButtonCounter,
     ButtonLedState,
+    CounterChannel,
     Sensor,
     SensorNumber,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "Button",
     "ButtonCounter",
     "ButtonLedState",
+    "CounterChannel",
     "Sensor",
     "SensorNumber",
 ]

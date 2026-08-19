@@ -178,20 +178,19 @@ class TestChannel:
         channel.remove_on_status_update(callback)
         assert callback not in channel._on_status_update
 
-    def test_is_counter_channel_default(self, mock_module):
-        """Test default is_counter_channel returns False."""
-        channel = Channel(mock_module, 1, "Test", False, False, 0x01)
-        assert not channel.is_counter_channel()
+    def test_channel_protocols(self, mock_module):
+        """Test that base Channel does not implement specialized protocols."""
+        from velbusaio.protocols import Counter, Cover, Dimmable, HasEnergy, HasUnit, Pressable, Switchable, Temperature
 
-    def test_is_temperature_default(self, mock_module):
-        """Test default is_temperature returns False."""
         channel = Channel(mock_module, 1, "Test", False, False, 0x01)
-        assert not channel.is_temperature()
-
-    def test_is_water_default(self, mock_module):
-        """Test default is_water returns False."""
-        channel = Channel(mock_module, 1, "Test", False, False, 0x01)
-        assert not channel.is_water()
+        assert not isinstance(channel, Counter)
+        assert not isinstance(channel, Temperature)
+        assert not isinstance(channel, HasUnit)
+        assert not isinstance(channel, Pressable)
+        assert not isinstance(channel, HasEnergy)
+        assert not isinstance(channel, Switchable)
+        assert not isinstance(channel, Dimmable)
+        assert not isinstance(channel, Cover)
 
     def test_to_cache(self, mock_module):
         """Test converting channel to cache dictionary."""

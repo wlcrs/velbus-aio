@@ -538,10 +538,6 @@ class Temperature(Channel):
         """Return the sensor type."""
         return "temperature"
 
-    def is_temperature(self) -> bool:
-        """Return if this channel is a temperature sensor."""
-        return True
-
     def get_max(self) -> int | None:
         """Return the maximum temperature recorded."""
         if self.max is None:
